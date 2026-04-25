@@ -118,7 +118,7 @@ async function handleLogin(request, env) {
   }
 
   if (isValid) {
-    const token = generateToken(){
+    const token = generateToken();
     await env.STUDIO_KV.put(`session:${token}`, JSON.stringify({ username }), { expirationTtl: 86400 });
     return Response.json({ success: true, token, isInitial, permissions, username });
   } else {
