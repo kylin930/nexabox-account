@@ -68,6 +68,11 @@ export async function onRequest(context) {
           permissions: [], // 默认无任何应用权限
           lastLogin: null
         };
+        if (path === '/api/admin/users' && method === 'DELETE') {
+          const { username } = await request.json();
+          await env.STUDIO_KV.delete(`user:${username}`);
+          return Response.json({ success: true });
+        }
         await env.STUDIO_KV.put(`user:${username}`, JSON.stringify(newUser));
         return Response.json({ success: true });
       }
