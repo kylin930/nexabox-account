@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>工作室统一登录</title>
+</head>
+<body>
+  <h2>登录工作室账号</h2>
+  <div id="login-form">
+    <input type="text" id="username" placeholder="用户名" />
+    <input type="password" id="password" placeholder="密码" />
+    <button onclick="doLogin()">登录</button>
+  </div>
+
+  <div id="reset-form" style="display: none;">
+    <h3>这是您首次登录，请修改密码</h3>
+    <input type="password" id="new-password" placeholder="新密码" />
+    <button onclick="changePassword()">确认修改并登录</button>
+  </div>
+
+  <script>
+    // 解析 URL 参数，用于第三方接入
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetApp = urlParams.get('app'); 
+    const redirectUrl = urlParams.get('redirect');
+
+    // 页面加载时检查 localStorage 实现一键登录
+    window.onload = function() {
+      const savedToken = localStorage.getItem('studio_auth_token');
+      const savedPerms = JSON.parse(localStorage.getItem('studio_perms') || '[]');
+      
+      if (savedToken) {
+        // 如果是从其他 App 跳转来的，检查权限并带 Token 重定向回去
+        if (targetApp && redirectUrl) {
+          if (savedPerms.includes('all') || savedPerms.includes(targetApp)) {
+             window.location.href = `${redirectUrl}?token=${savedToken}`;
+             return;
+          } else {
+             alert(`您没有应用 ${targetApp} 的访问权限！`);
+          }
+        } else {
+          // 如果是直接访问，跳回个人主页
+          window.location.href = '/index.html';
+        }
+      }
+    };
+
+    let tempToken = '';
+
+    async function doLogin() {
+      const u = document.getElementById('username').value;
+      const p = document.getElementById('password').value;
+
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        tempToken = data.token;
+        
+        if (data.isInitial) {
+          // 强制修改初始密码
+          document.getElementById('login-form').style.display = 'none';
+          document.getElementById('reset-form').style.display = 'block';
+        } else {
+          finishLogin(data.token, data.permissions);
+        }
+      } else {
+        alert("登录失败，请检查账号密码！");
+      }
+    }
+
+    async function changePassword() {
+      const newPwd = document.getElementById('new-password').value;
+      const res = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${tempToken}`
+        },
+        body: JSON.stringify({ newPassword: newPwd })
+      });
+
+      if (res.ok) {
+        alert("密码修改成功！");
+        // 需要重新调用一个接口获取权限，或者简单起见跳回重新登录，这里假设为了流畅直接放行
+        // 在实际业务中你可以从上一步保留 permissions
+        window.location.href = '/index.html'; 
+      }
+    }
+
+    function finishLogin(token, permissions) {
+      // 1. 将 Token 存入 localStorage
+      localStorage.setItem('studio_auth_token', token);
+      localStorage.setItem('studio_perms', JSON.stringify(permissions));
+
+      // 2. 根据是否有回调地址进行路由分发
+      if (targetApp && redirectUrl) {
+          if (permissions.includes('all') || permissions.includes(targetApp)) {
+             window.location.href = `${redirectUrl}?token=${token}`;
+          } else {
+             alert(`您没有应用 ${targetApp} 的访问权限！`);
+          }
+      } else {
+        window.location.href = '/index.html';
+      }
+    }
+  </script>
+</body>
+</html>
