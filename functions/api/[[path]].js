@@ -9,7 +9,6 @@ export async function onRequest(context) {
   const path = url.pathname; // 例如 /api/login
   const method = request.method;
 
-  // 简单的路由分发
   try {
     if (path === '/api/login' && method === 'POST') {
       return await handleLogin(request, env);
@@ -43,7 +42,6 @@ export async function onRequest(context) {
       const { toUser, content } = await request.json();
       const msgId = crypto.randomUUID();
       const message = { from: currentUser, content, time: Date.now() };
-      // 简单起见，把消息存为一个列表
       const userBox = await env.STUDIO_KV.get(`msg:${toUser}`, 'json') || [];
       userBox.push(message);
       await env.STUDIO_KV.put(`msg:${toUser}`, JSON.stringify(userBox));
@@ -120,8 +118,7 @@ async function handleLogin(request, env) {
   }
 
   if (isValid) {
-    const token = generateToken();
-    // Token 过期时间设置为 24 小时 (以秒为单位)
+    const token = generateToken(){
     await env.STUDIO_KV.put(`session:${token}`, JSON.stringify({ username }), { expirationTtl: 86400 });
     return Response.json({ success: true, token, isInitial, permissions, username });
   } else {
