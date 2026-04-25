@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>NexaboxAccount</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .card { border: 2px solid #333; padding: 15px; border-radius: 8px; margin-bottom: 20px; background: #f9f9f9; }
+    input { width: 100%; padding: 8px; margin: 5px 0 15px; box-sizing: border-box; }
+    button { padding: 8px 16px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 4px; }
+    button.danger { background: #dc3545; }
+    button.secondary { background: #6c757d; }
+  </style>
+</head>
+<body>
+  <h2>NexaboxAccount管理后台</h2>
+  <button class="secondary" onclick="window.location.href='/index.html'" style="margin-bottom: 20px;">返回个人中心</button>
+
+  <div class="card">
+    <h3>新增用户</h3>
+    <input type="text" id="new-user-name" placeholder="设置用户名 (如: lisi)">
+    <input type="text" id="new-user-pwd" placeholder="设置初始密码 (登录后会强制修改)">
+    <button onclick="createUser()">创建用户</button>
+  </div>
+
+  <div class="card">
+    <h3>修改用户权限</h3>
+    <p style="font-size: 0.9em; color: #555;">权限填应用名称，多个用英文逗号分隔，如: <code>DataBoard,Wiki</code>。填 <code>all</code> 代表所有权限。</p>
+    <input type="text" id="perm-user-name" placeholder="目标用户名">
+    <input type="text" id="perm-list" placeholder="输入权限列表 (如: DataBoard,Wiki)">
+    <button onclick="updatePermissions()">更新权限</button>
+  </div>
+
+  <div class="card" style="border-color: #dc3545; background: #fff5f5;">
+    <h3 style="color: #dc3545;">删除用户</h3>
+    <input type="text" id="del-user-name" placeholder="输入要删除的用户名">
+    <button class="danger" onclick="deleteUser()">永久删除该用户</button>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('studio_auth_token');
+    if (!token) window.location.href = '/login.html';
+
+    // 封装的带 Token 的 Fetch
+    async function adminFetch(path, options = {}) {
+      options.headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      const res = await fetch(path, options);
+      if (res.status === 403) {
+        alert('抱歉，您没有管理员权限！');
+        window.location.href = '/index.html';
+        throw new Error('Forbidden');
+      }
+      return res;
+    }
+
+    // 1. 创建用户
+    async function createUser() {
+      const username = document.getElementById('new-user-name').value.trim();
+      const initialPassword = document.getElementById('new-user-pwd').value.trim();
+      if (!username || !initialPassword) return alert('用户名和初始密码必填');
+
+      const res = await adminFetch('/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({ username, initialPassword })
+      });
+      if (res.ok) {
+        alert(`用户 ${username} 创建成功！`);
+        document.getElementById('new-user-name').value = '';
+        document.getElementById('new-user-pwd').value = '';
+      } else {
+        alert('创建失败，请查看控制台或重试。');
+      }
+    }
+
+    // 2. 修改权限
+    async function updatePermissions() {
+      const username = document.getElementById('perm-user-name').value.trim();
+      const permsStr = document.getElementById('perm-list').value.trim();
+      if (!username) return alert('请指定用户名');
+
+      // 将逗号分隔的字符串转为数组，并清理空格
+      const permissions = permsStr.split(',').map(p => p.trim()).filter(p => p !== '');
+
+      const res = await adminFetch('/api/admin/users/permissions', {
+        method: 'PUT',
+        body: JSON.stringify({ username, permissions })
+      });
+      if (res.ok) {
+        alert(`用户 ${username} 的权限已更新为: [${permissions.join(', ')}]`);
+        document.getElementById('perm-user-name').value = '';
+        document.getElementById('perm-list').value = '';
+      } else if (res.status === 404) {
+        alert('找不到该用户！');
+      } else {
+        alert('更新失败。');
+      }
+    }
+
+    // 3. 删除用户
+    async function deleteUser() {
+      const username = document.getElementById('del-user-name').value.trim();
+      if (!username) return alert('请输入要删除的用户名');
+      
+      if (!confirm(`警告：确定要永久删除用户 ${username} 吗？此操作无法恢复！`)) return;
+
+      const res = await adminFetch('/api/admin/users', {
+        method: 'DELETE',
+        body: JSON.stringify({ username })
+      });
+      if (res.ok) {
+        alert(`用户 ${username} 已被删除。`);
+        document.getElementById('del-user-name').value = '';
+      } else {
+        alert('删除失败。');
+      }
+    }
+  </script>
+</body>
+</html>
