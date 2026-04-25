@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexaboxDashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    .card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .header { display: flex; justify-content: space-between; align-items: center; }
+    button { padding: 8px 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+    button.danger { background: #dc3545; }
+    input, textarea { width: 100%; padding: 8px; margin: 5px 0 15px; box-sizing: border-box; }
+    .message { border-bottom: 1px solid #eee; padding: 10px 0; }
+    .time { color: #888; font-size: 0.8em; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2 id="welcome-text">加载中...</h2>
+    <div>
+      <button id="admin-btn" style="display: none;" onclick="window.location.href='/admin.html'">进入管理员后台</button>
+      <button class="danger" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>我的信息</h3>
+    <p><strong>账号权限：</strong> <span id="user-perms">加载中...</span></p>
+    <p><strong>上次登录：</strong> <span id="last-login">加载中...</span></p>
+  </div>
+
+  <div class="card">
+    <h3>修改密码</h3>
+    <input type="password" id="new-password" placeholder="输入新密码">
+    <button onclick="updatePassword()">确认修改</button>
+  </div>
+
+  <div class="card">
+    <h3>发送内部消息</h3>
+    <input type="text" id="msg-to" placeholder="接收人用户名 (如: zhangsan)">
+    <textarea id="msg-content" rows="3" placeholder="写点什么..."></textarea>
+    <button onclick="sendMessage()">发送消息</button>
+  </div>
+
+  <div class="card">
+    <h3>我的收件箱</h3>
+    <button onclick="loadMessages()" style="margin-bottom: 10px;">刷新消息</button>
+    <div id="inbox"></div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('studio_auth_token');
+    
+    // 1. 检查是否登录
+    if (!token) {
+      window.location.href = '/login.html';
+    }
+
+    // 统一的请求函数，自动带上 Token
+    async function apiFetch(path, options = {}) {
+      options.headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      const res = await fetch(path, options);
+      if (res.status === 401) {
+        alert('登录已过期，请重新登录');
+        logout();
+      }
+      return res;
+    }
+
+    // 2. 加载用户基本信息
+    async function loadProfile() {
+      const res = await apiFetch('/api/me');
+      if (res.ok) {
+        const user = await res.json();
+        document.getElementById('welcome-text').innerText = `你好，${user.username}！`;
+        
+        // 显示权限
+        const perms = user.permissions || [];
+        document.getElementById('user-perms').innerText = perms.length > 0 ? perms.join(', ') : '无特殊权限';
+        
+        // 显示上次登录时间
+        if (user.lastLogin) {
+          const date = new Date(user.lastLogin);
+          document.getElementById('last-login').innerText = date.toLocaleString();
+        } else {
+          document.getElementById('last-login').innerText = '首次登录';
+        }
+
+        // 如果是管理员，显示后台入口
+        if (perms.includes('admin') || perms.includes('all')) {
+          document.getElementById('admin-btn').style.display = 'inline-block';
+        }
+      }
+    }
+
+    // 3. 修改密码
+    async function updatePassword() {
+      const newPassword = document.getElementById('new-password').value;
+      if (!newPassword) return alert('密码不能为空');
+
+      const res = await apiFetch('/api/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ newPassword })
+      });
+      if (res.ok) {
+        alert('密码修改成功！');
+        document.getElementById('new-password').value = '';
+      }
+    }
+
+    // 4. 发送消息
+    async function sendMessage() {
+      const toUser = document.getElementById('msg-to').value;
+      const content = document.getElementById('msg-content').value;
+      if (!toUser || !content) return alert('接收人和内容不能为空');
+
+      const res = await apiFetch('/api/messages', {
+        method: 'POST',
+        body: JSON.stringify({ toUser, content })
+      });
+      if (res.ok) {
+        alert('发送成功！');
+        document.getElementById('msg-content').value = '';
+      } else {
+        alert('发送失败，请检查用户名是否正确。');
+      }
+    }
+
+    // 5. 加载收件箱
+    async function loadMessages() {
+      const res = await apiFetch('/api/messages');
+      if (res.ok) {
+        const messages = await res.json();
+        const inbox = document.getElementById('inbox');
+        if (messages.length === 0) {
+          inbox.innerHTML = '<p>暂无消息</p>';
+          return;
+        }
+        // 倒序排列，最新的在前面
+        inbox.innerHTML = messages.reverse().map(msg => `
+          <div class="message">
+            <strong>来自: ${msg.from}</strong> 
+            <span class="time">(${new Date(msg.time).toLocaleString()})</span>
+            <p style="margin: 5px 0 0;">${msg.content}</p>
+          </div>
+        `).join('');
+      }
+    }
+
+    // 6. 退出登录
+    function logout() {
+      localStorage.removeItem('studio_auth_token');
+      localStorage.removeItem('studio_perms');
+      window.location.href = '/login.html';
+    }
+
+    // 初始化页面
+    loadProfile();
+    loadMessages();
+  </script>
+</body>
+</html>
