@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>工作室统一账号系统API文档v1</title>
+<style>
+  body {
+    font-family: "Times New Roman", Times, serif;
+  }
+  pre {
+    border: 1px solid #000000;
+    padding: 10px;
+    font-family: "Courier New", Courier, monospace;
+  }
+  .highlight { background-color: #FFFF00; }
+</style>
+</head>
+<body>
+
+<center>
+  <h1><font color="#000080">工作室统一账号系统API文档</font></h1>
+  <h3>版本: 1.0 | 最后更新日期: 2026年4月</h3>
+  <marquee width="50%" bgcolor="#000080"><font color="#FFFFFF"><b>欢迎查看此文档！请注意存储好您的 BearerToken</b></font></marquee>
+</center>
+
+<hr width="80%" size="3" color="#000080">
+
+<center>
+  <p><b>[ <a href="#auth">认证说明</a> | <a href="#user">用户接口</a> | <a href="#msg">消息接口</a> | <a href="#admin">管理员接口</a> ]</b></p>
+</center>
+
+<br>
+
+<table border="0" width="80%" align="center" cellpadding="5">
+<tr>
+<td>
+
+  <a name="auth"></a>
+  <h2><font color="#800000">一、 认证与基础说明</font></h2>
+  <p>所有的 API 请求基础路径为：<code>/api</code></p>
+  <p>除登录接口外，所有请求都必须在 HTTP Header 中携带身份验证令牌：</p>
+  <pre>Authorization: Bearer &lt;你的_Token&gt;</pre>
+
+  <hr>
+
+  <a name="user"></a>
+  <h2><font color="#800000">二、 用户基础接口</font></h2>
+
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
+    <tr bgcolor="#CCCCCC">
+      <th width="20%">接口名称</th>
+      <th width="10%">请求方式</th>
+      <th width="30%">请求路径</th>
+      <th width="40%">说明</th>
+    </tr>
+    <tr>
+      <td><b>1. 用户登录</b></td>
+      <td align="center">POST</td>
+      <td><code>/api/login</code></td>
+      <td>验证用户名和密码，返回会话 Token。</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <b>请求体 (JSON):</b>
+        <pre>{"username": "your_name", "password": "your_password"}</pre>
+        <b>成功响应 (200 OK):</b>
+        <pre>{"success": true, "token": "xxx-xxx", "isInitial": false, "permissions": ["Wiki"], "username": "your_name"}</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
+    <tr bgcolor="#CCCCCC">
+      <th width="20%">接口名称</th>
+      <th width="10%">请求方式</th>
+      <th width="30%">请求路径</th>
+      <th width="40%">说明</th>
+    </tr>
+    <tr>
+      <td><b>2. 获取个人信息</b></td>
+      <td align="center">GET</td>
+      <td><code>/api/me</code></td>
+      <td>获取当前 Token 对应用户的详细信息。</td>
+    </tr>
+  </table>
+  <br>
+
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
+    <tr bgcolor="#CCCCCC">
+      <th width="20%">接口名称</th>
+      <th width="10%">请求方式</th>
+      <th width="30%">请求路径</th>
+      <th width="40%">说明</th>
+    </tr>
+    <tr>
+      <td><b>3. 修改密码</b></td>
+      <td align="center">POST</td>
+      <td><code>/api/change-password</code></td>
+      <td>更新当前用户的密码（首次登录强制调用此接口）。</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <b>请求体 (JSON):</b>
+        <pre>{"newPassword": "my_new_password_123"}</pre>
+      </td>
+    </tr>
+  </table>
+
+  <hr>
+
+  <a name="msg"></a>
+  <h2><font color="#800000">三、 内部消息接口</font></h2>
+
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
+    <tr bgcolor="#CCCCCC">
+      <th width="20%">接口名称</th>
+      <th width="10%">请求方式</th>
+      <th width="30%">请求路径</th>
+      <th width="40%">说明</th>
+    </tr>
+    <tr>
+      <td><b>1. 发送消息</b></td>
+      <td align="center">POST</td>
+      <td><code>/api/messages</code></td>
+      <td>向工作室的其他成员发送一条站内信。</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <b>请求体 (JSON):</b>
+        <pre>{"toUser": "target_username", "content": "Hello World!"}</pre>
+      </td>
+    </tr>
+    <tr>
+      <td><b>2. 获取收件箱</b></td>
+      <td align="center">GET</td>
+      <td><code>/api/messages</code></td>
+      <td>获取发送给当前用户的所有消息。</td>
+    </tr>
+  </table>
+
+  <hr>
+
+  <a name="admin"></a>
+  <h2><font color="#800000">四、 <span class="highlight">管理员专属接口</span></font></h2>
+  <p><font color="#FF0000"><i>注意：以下接口仅限拥有 <code>admin</code> 权限的账户调用！</i></font></p>
+
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
+    <tr bgcolor="#CCCCCC">
+      <th width="20%">接口名称</th>
+      <th width="10%">请求方式</th>
+      <th width="30%">请求路径</th>
+      <th width="40%">说明</th>
+    </tr>
+    <tr>
+      <td><b>1. 创建新用户</b></td>
+      <td align="center">POST</td>
+      <td><code>/api/admin/users</code></td>
+      <td>录入新成员，分配初始密码。</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <b>请求体 (JSON):</b>
+        <pre>{"username": "new_guy", "initialPassword": "123456"}</pre>
+      </td>
+    </tr>
+    <tr>
+      <td><b>2. 更新用户权限</b></td>
+      <td align="center">PUT</td>
+      <td><code>/api/admin/users/permissions</code></td>
+      <td>修改用户可访问的子系统列表。</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <b>请求体 (JSON):</b>
+        <pre>{"username": "new_guy", "permissions": ["DataBoard", "Wiki"]}</pre>
+      </td>
+    </tr>
+    <tr>
+      <td><b>3. 删除用户</b></td>
+      <td align="center">DELETE</td>
+      <td><code>/api/admin/users</code></td>
+      <td>永久注销该用户账号。</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <b>请求体 (JSON):</b>
+        <pre>{"username": "user_to_delete"}</pre>
+      </td>
+    </tr>
+  </table>
+
+</td>
+</tr>
+</table>
+
+<br><br>
+<center>
+  <hr width="50%" size="1" color="#000000">
+  <p><font size="-1">
+    <i>使用cloudflare pages托管</i><br>
+    &copy; 2026 Nexabox.
+  </font></p>
+</center>
+
+</body>
+</html>
