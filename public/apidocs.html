@@ -24,7 +24,7 @@
 
 <hr width="90%" size="3" color="#000080">
   <center>
-    <p><b>[ <a href="#auth">认证说明</a> | <a href="#user">用户接口</a> | <a href="#msg">消息接口</a> | <a href="#admin">管理员接口</a> ]</b></p>
+    <p><b>[ <a href="#auth">认证说明</a> | <a href="#user">用户接口</a> | <a href="#msg">消息接口</a> | <a href="#admin">管理员接口</a> | <a href="#verify">应用接入接口</a> ]</b></p>
   </center>
     
 <br>
@@ -184,6 +184,37 @@
       <td colspan="4">
         <b>请求体 (JSON):</b>
         <pre>{"username": "user_to_delete"}</pre>
+      </td>
+    </tr>
+  </table>
+
+  <hr>
+
+  <a name="verify"></a>
+  <h2><font color="#800000">五、 子应用接入接口</font></h2>
+  <p>供第三方或内部子应用（如 DataBoard 等）验证用户 Token 的有效性并获取用户权限。</p>
+
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
+    <tr bgcolor="#CCCCCC">
+      <th width="20%">接口名称</th>
+      <th width="10%">请求方式</th>
+      <th width="30%">请求路径</th>
+      <th width="40%">说明</th>
+    </tr>
+    <tr>
+      <td><b>1. Token 查验</b></td>
+      <td align="center">POST</td>
+      <td><code>/api/verify</code></td>
+      <td>校验前端传来的会话 Token 是否有效，并返回关联的用户及权限信息。</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <b>请求体 (JSON):</b>
+        <pre>{"token": "需要验证的_Token"}</pre>
+        <b>成功响应 (有效 Token):</b>
+        <pre>{"valid": true, "username": "user_name", "permissions": ["DataBoard", "Wiki"]}</pre>
+        <b>失败响应 (无效或过期 Token):</b>
+        <pre>{"valid": false}</pre>
       </td>
     </tr>
   </table>
