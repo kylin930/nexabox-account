@@ -53,6 +53,24 @@ export async function onRequest(context) {
       return Response.json(messages);
     }
 
+    if (path === '/api/verify' && method === 'POST') {
+      const { token } = await request.json();
+      if (!token) return new Response('缺少 Token', { status: 400 });
+    
+      const sessionData = await env.STUDIO_KV.get(`session:${token}`, 'json');
+      if (!sessionData) {
+        return Response.json({ valid: false });
+      }
+    
+      const user = await env.STUDIO_KV.get(`user:${sessionData.username}`, 'json');
+      
+      return Response.json({
+        valid: true,
+        username: sessionData.username,
+        permissions: user ? user.permissions : []
+      });
+    }
+
     // --- 管理员专属功能 ---
     if (path.startsWith('/api/admin')) {
       if (currentUser !== env.ADMIN_USER) return new Response('无管理员权限', { status: 403 });
