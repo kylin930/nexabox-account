@@ -2,31 +2,47 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>NexaboxAccount</title>
+  <title>NexaboxAccountAdmin</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
-    .card { border: 2px solid #333; padding: 15px; border-radius: 8px; margin-bottom: 20px; background: #f9f9f9; }
-    input { width: 100%; padding: 8px; margin: 5px 0 15px; box-sizing: border-box; }
-    button { padding: 8px 16px; cursor: pointer;border-radius: 4px; }
+    body { font-family: system-ui, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    .card { border: 2px padding: 15px; border-radius: 8px; margin-bottom: 20px;}
+    input, textarea { width: 100%; padding: 8px; margin: 5px 0 15px; box-sizing: border-box; font-family: monospace; }
+    textarea { resize: vertical; }
+    button { padding: 8px 16px; cursor: pointer; border-radius: 4px; }
+    .help-text { font-size: 0.85em; margin-top: -10px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
-  <h2>NexaboxAccount管理后台</h2>
+  <h2>NexaboxAccountAdmin</h2>
   <button class="secondary" onclick="window.location.href='/index.html'" style="margin-bottom: 20px;">返回个人中心</button>
 
   <div class="card">
-    <h3>新增用户</h3>
+    <h3>新增单个用户</h3>
     <input type="text" id="new-user-name" placeholder="设置用户名 (如: lisi)">
     <input type="text" id="new-user-pwd" placeholder="设置初始密码 (登录后会强制修改)">
     <button onclick="createUser()">创建用户</button>
   </div>
 
   <div class="card">
-    <h3>修改用户权限</h3>
-    <p style="font-size: 0.9em; color: #555;">权限填应用名称，多个用英文逗号分隔，如: <code>DataBoard,Wiki</code>。填 <code>all</code> 代表所有权限。</p>
+    <h3>修改单个权限</h3>
+    <p class="help-text">权限填应用名称，多个用英文逗号分隔。填 <code>all</code> 代表所有权限。</p>
     <input type="text" id="perm-user-name" placeholder="目标用户名">
     <input type="text" id="perm-list" placeholder="输入权限列表 (如: DataBoard,Wiki)">
     <button onclick="updatePermissions()">更新权限</button>
+  </div>
+
+  <div class="card batch-card">
+    <h3 style="color: #0056b3;">批量创建用户</h3>
+    <p class="help-text">每行一个用户，格式：<b>用户名,初始密码</b>（使用英文逗号）</p>
+    <textarea id="batch-users-text" rows="4" placeholder="zhangsan,123456&#10;lisi,abcdef&#10;wangwu,888888"></textarea>
+    <button class="primary" id="btn-batch-create" onclick="batchCreateUsers()">批量执行创建</button>
+  </div>
+
+  <div class="card batch-card">
+    <h3 style="color: #0056b3;">批量修改权限</h3>
+    <p class="help-text">每行一个用户，格式：<b>用户名,权限1,权限2...</b>（使用英文逗号）</p>
+    <textarea id="batch-perms-text" rows="4" placeholder="zhangsan,DataBoard,Wiki&#10;lisi,all&#10;wangwu,Wiki"></textarea>
+    <button class="primary" id="btn-batch-perm" onclick="batchUpdatePermissions()">批量执行赋权</button>
   </div>
 
   <div class="card" style="border-color: #dc3545; background: #fff5f5;">
@@ -54,7 +70,7 @@
       return res;
     }
 
-    // 1. 创建用户
+    // --- 单个操作 ---
     async function createUser() {
       const username = document.getElementById('new-user-name').value.trim();
       const initialPassword = document.getElementById('new-user-pwd').value.trim();
@@ -73,15 +89,12 @@
       }
     }
 
-    // 2. 修改权限
     async function updatePermissions() {
       const username = document.getElementById('perm-user-name').value.trim();
       const permsStr = document.getElementById('perm-list').value.trim();
       if (!username) return alert('请指定用户名');
 
-      // 将逗号分隔的字符串转为数组，并清理空格
       const permissions = permsStr.split(',').map(p => p.trim()).filter(p => p !== '');
-
       const res = await adminFetch('/api/admin/users/permissions', {
         method: 'PUT',
         body: JSON.stringify({ username, permissions })
@@ -90,18 +103,14 @@
         alert(`用户 ${username} 的权限已更新为: [${permissions.join(', ')}]`);
         document.getElementById('perm-user-name').value = '';
         document.getElementById('perm-list').value = '';
-      } else if (res.status === 404) {
-        alert('找不到该用户！');
       } else {
-        alert('更新失败。');
+        alert('更新失败，可能是找不到该用户。');
       }
     }
 
-    // 3. 删除用户
     async function deleteUser() {
       const username = document.getElementById('del-user-name').value.trim();
       if (!username) return alert('请输入要删除的用户名');
-      
       if (!confirm(`警告：确定要永久删除用户 ${username} 吗？此操作无法恢复！`)) return;
 
       const res = await adminFetch('/api/admin/users', {
@@ -114,6 +123,90 @@
       } else {
         alert('删除失败。');
       }
+    }
+
+    async function batchCreateUsers() {
+      const text = document.getElementById('batch-users-text').value.trim();
+      if (!text) return alert('请输入需要批量创建的数据');
+      
+      const btn = document.getElementById('btn-batch-create');
+      btn.disabled = true;
+      btn.innerText = '执行中...';
+
+      const lines = text.split('\n');
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        
+        const parts = line.split(',').map(s => s.trim());
+        const username = parts[0];
+        const initialPassword = parts[1];
+
+        if (!username || !initialPassword) {
+           failCount++;
+           continue;
+        }
+
+        try {
+          const res = await adminFetch('/api/admin/users', {
+            method: 'POST',
+            body: JSON.stringify({ username, initialPassword })
+          });
+          if (res.ok) successCount++;
+          else failCount++;
+        } catch (e) {
+          failCount++;
+        }
+      }
+
+      alert(`批量创建执行完毕！\n成功: ${successCount} 个\n失败/跳过格式错误: ${failCount} 个`);
+      if(failCount === 0) document.getElementById('batch-users-text').value = '';
+      btn.disabled = false;
+      btn.innerText = '批量执行创建';
+    }
+
+    async function batchUpdatePermissions() {
+      const text = document.getElementById('batch-perms-text').value.trim();
+      if (!text) return alert('请输入需要批量赋权的数据');
+      
+      const btn = document.getElementById('btn-batch-perm');
+      btn.disabled = true;
+      btn.innerText = '执行中...';
+
+      const lines = text.split('\n');
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        
+        const parts = line.split(',').map(s => s.trim());
+        const username = parts[0];
+        const permissions = parts.slice(1).filter(p => p !== '');
+
+        if (!username) {
+           failCount++;
+           continue;
+        }
+
+        try {
+          const res = await adminFetch('/api/admin/users/permissions', {
+            method: 'PUT',
+            body: JSON.stringify({ username, permissions })
+          });
+          if (res.ok) successCount++;
+          else failCount++;
+        } catch (e) {
+          failCount++;
+        }
+      }
+
+      alert(`批量赋权执行完毕！\n成功: ${successCount} 个\n失败/跳过未找到用户: ${failCount} 个`);
+      if(failCount === 0) document.getElementById('batch-perms-text').value = '';
+      btn.disabled = false;
+      btn.innerText = '批量执行赋权';
     }
   </script>
 </body>
