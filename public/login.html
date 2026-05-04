@@ -24,13 +24,37 @@
     const targetApp = urlParams.get('app'); 
     const redirectUrl = urlParams.get('redirect');
 
-    // 页面加载时检查 localStorage 实现一键登录
-    window.onload = function() {
+        // 页面加载时检查 localStorage 实现一键登录
+    window.onload = async function() {
       const savedToken = localStorage.getItem('studio_auth_token');
       const savedPerms = JSON.parse(localStorage.getItem('studio_perms') || '[]');
       
       if (savedToken) {
-        // 如果是从其他 App 跳转来的，检查权限并带 Token 重定向回去
+        // 【修复核心】：不要直接信任本地 Token，先去后端校验是否真的有效
+        try {
+          const verifyRes = await fetch('/api/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: savedToken })
+          });
+          const verifyData = await verifyRes.json();
+          
+          if (!verifyData.valid) {
+            // Token 在 KV 中已过期或不存在，清除本地缓存，安分地留在登录页
+            localStorage.removeItem('studio_auth_token');
+            localStorage.removeItem('studio_perms');
+            return; // 终止后续的重定向逻辑
+          }
+          
+          // 如果后端验证 Token 依然有效，并且需要更新权限也可以在这里顺便更新：
+          // localStorage.setItem('studio_perms', JSON.stringify(verifyData.permissions));
+
+        } catch (e) {
+          console.error("Token验证请求失败", e);
+          return; // 发生网络错误时，也留在登录页不盲目跳转
+        }
+
+        // Token 验证通过，继续原有的跳转逻辑
         if (targetApp && redirectUrl) {
           if (savedPerms.includes('all') || savedPerms.includes(targetApp)) {
              window.location.href = `${redirectUrl}?token=${savedToken}`;
@@ -44,7 +68,7 @@
         }
       }
     };
-
+    
     let tempToken = '';
 
     async function doLogin() {
