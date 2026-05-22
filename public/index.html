@@ -25,8 +25,16 @@
 
   <div class="card">
     <h3>我的信息</h3>
+    <img id="user-avatar" alt="用户头像" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; background-color: #dbeafe; display: block; margin-bottom: 15px;">
+    
     <p><strong>账号权限：</strong> <span id="user-perms">加载中...</span></p>
     <p><strong>上次登录：</strong> <span id="last-login">加载中...</span></p>
+  </div>
+
+  <div class="card">
+    <h3>设置头像</h3>
+    <input type="text" id="new-avatar" placeholder="输入头像图片 URL (例如: https://...)">
+    <button onclick="updateAvatar()">更新头像</button>
   </div>
 
   <div class="card">
@@ -77,6 +85,18 @@
         const user = await res.json();
         document.getElementById('welcome-text').innerText = `你好，${user.username}！`;
         
+        // 处理头像显示
+        const avatarImg = document.getElementById('user-avatar');
+        if (user.avatar) {
+          avatarImg.src = user.avatar;
+          document.getElementById('new-avatar').value = user.avatar;
+        } else {
+          // 生成一个带用户首字母的默认 SVG 头像
+          const firstLetter = user.username.charAt(0).toUpperCase();
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23dbeafe"/><text x="50%" y="50%" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="%231e3a8a" text-anchor="middle" dy=".35em">${firstLetter}</text></svg>`;
+          avatarImg.src = `data:image/svg+xml;utf8,${svg}`;
+        }
+
         // 显示权限
         const perms = user.permissions || [];
         document.getElementById('user-perms').innerText = perms.length > 0 ? perms.join(', ') : '无特殊权限';
@@ -93,6 +113,23 @@
         if (perms.includes('admin') || perms.includes('all')) {
           document.getElementById('admin-btn').style.display = 'inline-block';
         }
+      }
+    }
+
+    // 更新头像函数
+    async function updateAvatar() {
+      const avatarUrl = document.getElementById('new-avatar').value.trim();
+      
+      const res = await apiFetch('/api/update-avatar', {
+        method: 'POST',
+        body: JSON.stringify({ avatar: avatarUrl })
+      });
+      
+      if (res.ok) {
+        alert('头像设置成功！');
+        loadProfile(); // 刷新页面数据
+      } else {
+        alert('头像设置失败');
       }
     }
 

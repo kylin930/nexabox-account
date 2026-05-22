@@ -188,6 +188,50 @@
     </tr>
   </table>
 
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
+    <tr bgcolor="#CCCCCC">
+      <th width="20%">接口名称</th>
+      <th width="10%">请求方式</th>
+      <th width="30%">请求路径</th>
+      <th width="40%">说明</th>
+    </tr>
+    <tr>
+      <td><b>2. 获取个人信息</b></td>
+      <td align="center">GET</td>
+      <td><code>/api/me</code></td>
+      <td>获取当前 Token 对应用户的详细信息（包括头像）。</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <b>成功响应示例 (JSON):</b>
+        <pre>{"username": "xiaolin930", "permissions": ["all"], "avatar": "https://example.com/avatar.png", "lastLogin": 1716388492000}</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
+    <tr bgcolor="#CCCCCC">
+      <th width="20%">接口名称</th>
+      <th width="10%">请求方式</th>
+      <th width="30%">请求路径</th>
+      <th width="40%">说明</th>
+    </tr>
+    <tr>
+      <td><b>3. 更新头像</b></td>
+      <td align="center">POST</td>
+      <td><code>/api/update-avatar</code></td>
+      <td>更新当前用户的头像 URL 图片地址。</td>
+    </tr>
+    <tr>
+      <td colspan="4">
+        <b>请求体 (JSON):</b>
+        <pre>{"avatar": "https://example.com/new_avatar.png"}</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
   <hr>
 
   <a name="verify"></a>

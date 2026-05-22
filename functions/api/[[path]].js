@@ -37,6 +37,16 @@ export async function onRequest(context) {
       return Response.json({ success: true });
     }
 
+    if (path === '/api/update-avatar' && method === 'POST') {
+      const { avatar } = await request.json();
+      const user = await env.STUDIO_KV.get(`user:${currentUser}`, 'json');
+      if (!user) return new Response('用户不存在', { status: 404 });
+      
+      user.avatar = avatar || ''; // 更新或清空头像URL
+      await env.STUDIO_KV.put(`user:${currentUser}`, JSON.stringify(user));
+      return Response.json({ success: true, avatar: user.avatar });
+    }
+
     // --- 内部消息功能 ---
     if (path === '/api/messages' && method === 'POST') {
       const { toUser, content } = await request.json();
@@ -82,7 +92,8 @@ export async function onRequest(context) {
           password: initialPassword,
           isInitialPassword: true, // 标记为初始密码，需强制修改
           permissions: [], // 默认无任何应用权限
-          lastLogin: null
+          lastLogin: null,
+          avatar: ""
         };
         if (path === '/api/admin/users' && method === 'DELETE') {
           const { username } = await request.json();
