@@ -2,136 +2,99 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>NexaboxAccountLogin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - Nexabox Account</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mdui@1.0.2/dist/css/mdui.min.css">
+  <style>
+    body {
+      background-color: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 24px;
+    }
+    .login-title {
+      font-size: 24px;
+      font-weight: 500;
+      margin-bottom: 24px;
+      text-align: center;
+      color: #3f51b5;
+    }
+    .mdui-textfield {
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+  </style>
 </head>
-<body>
-  <h2>账号登录</h2>
-  <div id="login-form">
-    <input type="text" id="username" placeholder="用户名" />
-    <input type="password" id="password" placeholder="密码" />
-    <button onclick="doLogin()">登录</button>
-  </div>
+<body class="mdui-theme-primary-indigo mdui-theme-accent-pink">
 
-  <div id="reset-form" style="display: none;">
-    <h3>这是您首次登录，请修改密码</h3>
-    <input type="password" id="new-password" placeholder="新密码" />
-    <button onclick="changePassword()">确认修改并登录</button>
-  </div>
-
-  <script>
-    // 解析 URL 参数，用于第三方接入
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetApp = urlParams.get('app'); 
-    const redirectUrl = urlParams.get('redirect');
-
-        // 页面加载时检查 localStorage 实现一键登录
-    window.onload = async function() {
-      const savedToken = localStorage.getItem('studio_auth_token');
-      const savedPerms = JSON.parse(localStorage.getItem('studio_perms') || '[]');
-      
-      if (savedToken) {
-        // 【修复核心】：不要直接信任本地 Token，先去后端校验是否真的有效
-        try {
-          const verifyRes = await fetch('/api/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: savedToken })
-          });
-          const verifyData = await verifyRes.json();
-          
-          if (!verifyData.valid) {
-            // Token 在 KV 中已过期或不存在，清除本地缓存，安分地留在登录页
-            localStorage.removeItem('studio_auth_token');
-            localStorage.removeItem('studio_perms');
-            return; // 终止后续的重定向逻辑
-          }
-          
-          // 如果后端验证 Token 依然有效，并且需要更新权限也可以在这里顺便更新：
-          // localStorage.setItem('studio_perms', JSON.stringify(verifyData.permissions));
-
-        } catch (e) {
-          console.error("Token验证请求失败", e);
-          return; // 发生网络错误时，也留在登录页不盲目跳转
-        }
-
-        // Token 验证通过，继续原有的跳转逻辑
-        if (targetApp && redirectUrl) {
-          if (savedPerms.includes('all') || savedPerms.includes(targetApp)) {
-             window.location.href = `${redirectUrl}?token=${savedToken}`;
-             return;
-          } else {
-             alert(`您没有应用 ${targetApp} 的访问权限！`);
-          }
-        } else {
-          // 如果是直接访问，跳回个人主页
-          window.location.href = '/index.html';
-        }
-      }
-    };
+  <div class="mdui-card login-card mdui-hoverable">
+    <div class="login-title">Nexabox Account</div>
     
-    let tempToken = '';
+    <div class="mdui-textfield mdui-textfield-floating-label">
+      <label class="mdui-textfield-label">用户名</label>
+      <input class="mdui-textfield-input" type="text" id="username" required/>
+    </div>
 
+    <div class="mdui-textfield mdui-textfield-floating-label">
+      <label class="mdui-textfield-label">密码</label>
+      <input class="mdui-textfield-input" type="password" id="password" required/>
+    </div>
+
+    <div class="mdui-m-t-2">
+      <button class="mdui-btn mdui-btn-raised mdui-ripple mdui-color-theme-accent mdui-btn-block" onclick="doLogin()">登录</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/mdui@1.0.2/dist/js/mdui.min.js"></script>
+  <script>
     async function doLogin() {
-      const u = document.getElementById('username').value;
-      const p = document.getElementById('password').value;
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
 
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        tempToken = data.token;
-        
-        if (data.isInitial) {
-          // 强制修改初始密码
-          document.getElementById('login-form').style.display = 'none';
-          document.getElementById('reset-form').style.display = 'block';
-        } else {
-          finishLogin(data.token, data.permissions);
-        }
-      } else {
-        alert("登录失败，请检查账号密码！");
+      if (!username || !password) {
+        mdui.alert('请输入用户名和密码');
+        return;
       }
-    }
 
-    async function changePassword() {
-      const newPwd = document.getElementById('new-password').value;
-      const res = await fetch('/api/change-password', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tempToken}`
-        },
-        body: JSON.stringify({ newPassword: newPwd })
-      });
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
 
-      if (res.ok) {
-        alert("密码修改成功！");
-        // 需要重新调用一个接口获取权限，或者简单起见跳回重新登录，这里假设为了流畅直接放行
-        // 在实际业务中你可以从上一步保留 permissions
-        window.location.href = '/index.html'; 
-      }
-    }
-
-    function finishLogin(token, permissions) {
-      // 1. 将 Token 存入 localStorage
-      localStorage.setItem('studio_auth_token', token);
-      localStorage.setItem('studio_perms', JSON.stringify(permissions));
-
-      // 2. 根据是否有回调地址进行路由分发
-      if (targetApp && redirectUrl) {
-          if (permissions.includes('all') || permissions.includes(targetApp)) {
-             window.location.href = `${redirectUrl}?token=${token}`;
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('studio_auth_token', data.token);
+          localStorage.setItem('studio_username', data.username);
+          
+          if (data.isInitial) {
+            mdui.alert('检测到您是首次登录，请先修改初始密码。', '安全提示', () => {
+              window.location.href = '/index.html?change_pwd=1';
+            });
           } else {
-             alert(`您没有应用 ${targetApp} 的访问权限！`);
+            window.location.href = '/index.html';
           }
-      } else {
-        window.location.href = '/index.html';
+        } else {
+          const text = await res.text();
+          mdui.alert(text || '登录失败，请检查账号密码');
+        }
+      } catch (e) {
+        mdui.alert('网络请求失败');
       }
     }
+
+    // 回车登录
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doLogin();
+    });
   </script>
 </body>
 </html>

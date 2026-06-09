@@ -1,7 +1,13 @@
 // functions/api/[[path]].js
 
-// 辅助函数：生成随机 Token
 const generateToken = () => crypto.randomUUID();
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -9,138 +15,169 @@ export async function onRequest(context) {
   const path = url.pathname;
   const method = request.method;
 
-  // CORS 跨域处理
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Max-Age': '86400',
-  };
-
-  // 处理 预检请求 (Preflight)
   if (method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    let response;
-    if (path === '/api/login' && method === 'POST') {
-      response = await handleLogin(request, env);
-    } else {
-      // 以下接口需要验证 Token
-      const tokenHeader = request.headers.get('Authorization');
-      const token = tokenHeader?.startsWith('Bearer ') ? tokenHeader.substring(7) : null;
-      
-      // 注意：/api/verify 接口比较特殊，它本身就是用来验证 token 的，
-      // 但根据文档，它也需要携带 Authorization 头
-      if (!token) {
-        response = new Response('未授权', { status: 401 });
-      } else {
-        // 获取当前会话用户信息
-        const sessionData = await env.STUDIO_KV.get(`session:${token}`, 'json');
-        if (!sessionData) {
-          response = new Response('登录已过期', { status: 401 });
-        } else {
-          const currentUser = sessionData.username;
-
-          if (path === '/api/me' && method === 'GET') {
-            const user = await env.STUDIO_KV.get(`user:${currentUser}`, 'json');
-            response = Response.json({ username: currentUser, ...user });
-          } else if (path === '/api/change-password' && method === 'POST') {
-            const { newPassword } = await request.json();
-            const user = await env.STUDIO_KV.get(`user:${currentUser}`, 'json');
-            user.password = newPassword;
-            user.isInitialPassword = false;
-            await env.STUDIO_KV.put(`user:${currentUser}`, JSON.stringify(user));
-            response = Response.json({ success: true });
-          } else if (path === '/api/update-avatar' && method === 'POST') {
-            const { avatar } = await request.json();
-            const user = await env.STUDIO_KV.get(`user:${currentUser}`, 'json');
-            if (!user) {
-              response = new Response('用户不存在', { status: 404 });
-            } else {
-              user.avatar = avatar || '';
-              await env.STUDIO_KV.put(`user:${currentUser}`, JSON.stringify(user));
-              response = Response.json({ success: true, avatar: user.avatar });
-            }
-          } else if (path === '/api/messages' && method === 'POST') {
-            const { toUser, content } = await request.json();
-            const message = { from: currentUser, content, time: Date.now() };
-            const userBox = await env.STUDIO_KV.get(`msg:${toUser}`, 'json') || [];
-            userBox.push(message);
-            await env.STUDIO_KV.put(`msg:${toUser}`, JSON.stringify(userBox));
-            response = Response.json({ success: true });
-          } else if (path === '/api/messages' && method === 'GET') {
-            const messages = await env.STUDIO_KV.get(`msg:${currentUser}`, 'json') || [];
-            response = Response.json(messages);
-          } else if (path === '/api/verify' && method === 'POST') {
-            const { token: tokenToVerify } = await request.json();
-            if (!tokenToVerify) {
-              response = new Response('缺少 Token', { status: 400 });
-            } else {
-              const sessionDataVerify = await env.STUDIO_KV.get(`session:${tokenToVerify}`, 'json');
-              if (!sessionDataVerify) {
-                response = Response.json({ valid: false });
-              } else {
-                const user = await env.STUDIO_KV.get(`user:${sessionDataVerify.username}`, 'json');
-                response = Response.json({
-                  valid: true,
-                  username: sessionDataVerify.username,
-                  permissions: user ? user.permissions : []
-                });
-              }
-            }
-          } else if (path.startsWith('/api/admin')) {
-            if (currentUser !== env.ADMIN_USER) {
-              response = new Response('无管理员权限', { status: 403 });
-            } else if (path === '/api/admin/users' && method === 'POST') {
-              const { username, initialPassword } = await request.json();
-              const newUser = {
-                password: initialPassword,
-                isInitialPassword: true,
-                permissions: [],
-                lastLogin: null,
-                avatar: ""
-              };
-              await env.STUDIO_KV.put(`user:${username}`, JSON.stringify(newUser));
-              response = Response.json({ success: true });
-            } else if (path === '/api/admin/users' && method === 'DELETE') {
-              const { username } = await request.json();
-              await env.STUDIO_KV.delete(`user:${username}`);
-              response = Response.json({ success: true });
-            } else if (path === '/api/admin/users/permissions' && method === 'PUT') {
-              const { username, permissions } = await request.json();
-              const user = await env.STUDIO_KV.get(`user:${username}`, 'json');
-              if(!user) {
-                response = new Response('用户不存在', { status: 404 });
-              } else {
-                user.permissions = permissions;
-                await env.STUDIO_KV.put(`user:${username}`, JSON.stringify(user));
-                response = Response.json({ success: true });
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (!response) {
-      response = new Response('Not Found', { status: 404 });
-    }
-
-    // 给所有响应添加 CORS 头
+    const response = await routeRequest(path, method, request, env);
     const newResponse = new Response(response.body, response);
     Object.entries(corsHeaders).forEach(([k, v]) => newResponse.headers.set(k, v));
     return newResponse;
-
   } catch (err) {
-    const errorResponse = new Response(err.message, { status: 500 });
+    console.error(err);
+    const errorResponse = new Response(JSON.stringify({ error: err.message }), { 
+      status: err.status || 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
     Object.entries(corsHeaders).forEach(([k, v]) => errorResponse.headers.set(k, v));
     return errorResponse;
   }
 }
 
-// 登录处理函数
+async function routeRequest(path, method, request, env) {
+  // Public routes
+  if (path === '/api/login' && method === 'POST') {
+    return handleLogin(request, env);
+  }
+
+  // Auth check for all other routes
+  const tokenHeader = request.headers.get('Authorization');
+  const token = tokenHeader?.startsWith('Bearer ') ? tokenHeader.substring(7) : null;
+  if (!token) return new Response('Unauthorized', { status: 401 });
+
+  const sessionData = await env.STUDIO_KV.get(`session:${token}`, 'json');
+  if (!sessionData) return new Response('Session Expired', { status: 401 });
+  const currentUser = sessionData.username;
+
+  // Protected routes
+  switch (path) {
+    case '/api/me':
+      if (method === 'GET') {
+        const user = await env.STUDIO_KV.get(`user:${currentUser}`, 'json');
+        return Response.json({ username: currentUser, ...user });
+      }
+      break;
+
+    case '/api/change-password':
+      if (method === 'POST') {
+        const { newPassword } = await request.json();
+        const user = await env.STUDIO_KV.get(`user:${currentUser}`, 'json');
+        user.password = newPassword;
+        user.isInitialPassword = false;
+        await env.STUDIO_KV.put(`user:${currentUser}`, JSON.stringify(user));
+        return Response.json({ success: true });
+      }
+      break;
+
+    case '/api/update-avatar':
+      if (method === 'POST') {
+        const { avatar } = await request.json();
+        const user = await env.STUDIO_KV.get(`user:${currentUser}`, 'json');
+        user.avatar = avatar || '';
+        await env.STUDIO_KV.put(`user:${currentUser}`, JSON.stringify(user));
+        return Response.json({ success: true, avatar: user.avatar });
+      }
+      break;
+
+    case '/api/messages':
+      if (method === 'POST') {
+        const { toUser, content } = await request.json();
+        const message = { from: currentUser, content, time: Date.now() };
+        const userBox = await env.STUDIO_KV.get(`msg:${toUser}`, 'json') || [];
+        userBox.push(message);
+        await env.STUDIO_KV.put(`msg:${toUser}`, JSON.stringify(userBox));
+        return Response.json({ success: true });
+      }
+      if (method === 'GET') {
+        const messages = await env.STUDIO_KV.get(`msg:${currentUser}`, 'json') || [];
+        return Response.json(messages);
+      }
+      break;
+
+    case '/api/verify':
+      if (method === 'POST') {
+        const { token: tokenToVerify, app } = await request.json();
+        if (!tokenToVerify) return new Response('Missing Token', { status: 400 });
+        
+        const session = await env.STUDIO_KV.get(`session:${tokenToVerify}`, 'json');
+        if (!session) return Response.json({ valid: false });
+        
+        const user = await env.STUDIO_KV.get(`user:${session.username}`, 'json');
+        const perms = user ? user.permissions : [];
+        const hasAll = perms.includes('all');
+        
+        const responseData = {
+          valid: true,
+          username: session.username,
+          permissions: perms,
+          has_all: hasAll
+        };
+
+        if (app) {
+          responseData.authorized = hasAll || perms.includes(app);
+        }
+
+        return Response.json(responseData);
+      }
+      break;
+  }
+
+  // Admin routes
+  if (path.startsWith('/api/admin')) {
+    if (currentUser !== env.ADMIN_USER) {
+      return new Response('Forbidden', { status: 403 });
+    }
+
+    if (path === '/api/admin/users' && method === 'POST') {
+      const { username, initialPassword } = await request.json();
+      const newUser = {
+        password: initialPassword,
+        isInitialPassword: true,
+        permissions: [],
+        lastLogin: null,
+        avatar: ""
+      };
+      await env.STUDIO_KV.put(`user:${username}`, JSON.stringify(newUser));
+      return Response.json({ success: true });
+    }
+
+    if (path === '/api/admin/users' && method === 'DELETE') {
+      const { username } = await request.json();
+      await env.STUDIO_KV.delete(`user:${username}`);
+      return Response.json({ success: true });
+    }
+
+    if (path === '/api/admin/users/permissions' && method === 'PUT') {
+      const { username, permissions } = await request.json();
+      const user = await env.STUDIO_KV.get(`user:${username}`, 'json');
+      if(!user) return new Response('User Not Found', { status: 404 });
+      user.permissions = permissions;
+      await env.STUDIO_KV.put(`user:${username}`, JSON.stringify(user));
+      return Response.json({ success: true });
+    }
+
+    if (path === '/api/admin/users/grant-all' && method === 'POST') {
+      const { permission } = await request.json();
+      if (!permission) return new Response('Missing Permission Name', { status: 400 });
+      
+      const list = await env.STUDIO_KV.list({ prefix: 'user:' });
+      let count = 0;
+      for (const item of list.keys) {
+        const user = await env.STUDIO_KV.get(item.name, 'json');
+        if (user && !user.permissions.includes(permission)) {
+          user.permissions.push(permission);
+          await env.STUDIO_KV.put(item.name, JSON.stringify(user));
+          count++;
+        }
+      }
+      return Response.json({ success: true, count });
+    }
+  }
+
+  return new Response('Not Found', { status: 404 });
+}
+
 async function handleLogin(request, env) {
   const { username, password } = await request.json();
   let isValid = false;
@@ -166,6 +203,6 @@ async function handleLogin(request, env) {
     await env.STUDIO_KV.put(`session:${token}`, JSON.stringify({ username }), { expirationTtl: 86400 });
     return Response.json({ success: true, token, isInitial, permissions, username });
   } else {
-    return new Response('账号或密码错误', { status: 401 });
+    return new Response('Invalid credentials', { status: 401 });
   }
 }

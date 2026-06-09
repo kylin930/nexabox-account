@@ -1,280 +1,160 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>工作室统一账号系统API文档v1</title>
-<style>
-  body {
-    font-family: "Times New Roman", Times, serif;
-  }
-  pre {
-    border: 1px solid #000000;
-    padding: 10px;
-    font-family: "Courier New", Courier, monospace;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API 文档 - Nexabox Account</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mdui@1.0.2/dist/css/mdui.min.css">
+  <style>
+    body { background-color: #f5f5f5; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .mdui-card { margin-bottom: 32px; }
+    code { background-color: #eee; padding: 2px 4px; border-radius: 4px; font-family: monospace; }
+    pre { background-color: #212121; color: #fff; padding: 16px; border-radius: 4px; overflow-x: auto; }
+    .method-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 8px; font-size: 12px; }
+    .method-get { background-color: #4caf50; color: white; }
+    .method-post { background-color: #2196f3; color: white; }
+    .method-put { background-color: #ff9800; color: white; }
+    .method-delete { background-color: #f44336; color: white; }
+    .section-title { font-size: 24px; font-weight: 500; margin: 40px 0 20px; color: #3f51b5; border-bottom: 2px solid #3f51b5; padding-bottom: 8px; }
+  </style>
 </head>
-<body>
-  <div width="90%">
-    <center>
-      <h1>工作室统一账号系统API文档</h1>
-      <h3>版本: 1.0 | 最后更新日期: 2026年4月</h3>
-    </center>
+<body class="mdui-theme-primary-indigo mdui-theme-accent-pink mdui-appbar-with-toolbar">
+
+  <div class="mdui-appbar mdui-appbar-fixed">
+    <div class="mdui-toolbar mdui-color-theme">
+      <span class="mdui-typo-headline">Nexabox Account API 文档</span>
+      <div class="mdui-toolbar-spacer"></div>
+      <button class="mdui-btn mdui-btn-icon mdui-ripple" onclick="window.location.href='/index.html'">
+        <i class="mdui-icon material-icons">home</i>
+      </button>
+    </div>
   </div>
 
-<hr width="90%" size="3" color="#000080">
-  <center>
-    <p><b>[ <a href="#auth">认证说明</a> | <a href="#user">用户接口</a> | <a href="#msg">消息接口</a> | <a href="#admin">管理员接口</a> | <a href="#verify">应用接入接口</a> ]</b></p>
-  </center>
+  <div class="container">
     
-<br>
+    <div class="mdui-card">
+      <div class="mdui-card-content">
+        <div class="mdui-typo-display-1 mdui-text-color-theme">基础说明</div>
+        <p class="mdui-typo-body-1">所有 API 请求的基础路径为：<code>/api</code>。除登录接口外，所有请求都必须在 HTTP Header 中携带身份验证令牌：</p>
+        <pre>Authorization: Bearer &lt;Your_Token&gt;</pre>
+      </div>
+    </div>
 
-<table border="0" width="90%" align="center" cellpadding="5">
-<tr>
-<td>
+    <div class="section-title">用户认证</div>
 
-  <a name="auth"></a>
-  <h2><font color="#800000">一、 认证与基础说明</font></h2>
-  <p>所有的 API 请求基础路径为：<code>/api</code></p>
-  <p>除登录接口外，所有请求都必须在 HTTP Header 中携带身份验证令牌：</p>
-  <pre>Authorization: Bearer &lt;你的_Token&gt;</pre>
+    <div class="mdui-card">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title"><span class="method-tag method-post">POST</span> 用户登录</div>
+        <div class="mdui-card-primary-subtitle"><code>/api/login</code></div>
+      </div>
+      <div class="mdui-card-content">
+        <p><strong>请求体:</strong></p>
+        <pre>{
+  "username": "your_name",
+  "password": "your_password"
+}</pre>
+        <p><strong>成功响应:</strong></p>
+        <pre>{
+  "success": true, 
+  "token": "uuid-token-string", 
+  "isInitial": false, 
+  "permissions": ["Wiki"], 
+  "username": "your_name"
+}</pre>
+      </div>
+    </div>
 
-  <hr>
+    <div class="section-title">个人信息与设置</div>
 
-  <a name="user"></a>
-  <h2><font color="#800000">二、 用户基础接口</font></h2>
+    <div class="mdui-card">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title"><span class="method-tag method-get">GET</span> 获取个人信息</div>
+        <div class="mdui-card-primary-subtitle"><code>/api/me</code></div>
+      </div>
+      <div class="mdui-card-content">
+        <p><strong>成功响应:</strong></p>
+        <pre>{
+  "username": "lisi",
+  "permissions": ["all"],
+  "avatar": "https://...",
+  "lastLogin": 1716388492000
+}</pre>
+      </div>
+    </div>
 
-  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
-    <tr bgcolor="#CCCCCC">
-      <th width="20%">接口名称</th>
-      <th width="10%">请求方式</th>
-      <th width="30%">请求路径</th>
-      <th width="40%">说明</th>
-    </tr>
-    <tr>
-      <td><b>1. 用户登录</b></td>
-      <td align="center">POST</td>
-      <td><code>/api/login</code></td>
-      <td>验证用户名和密码，返回会话 Token。</td>
-    </tr>
-    <tr>
-      <td colspan="4">
-        <b>请求体 (JSON):</b>
-        <pre>{"username": "your_name", "password": "your_password"}</pre>
-        <b>成功响应 (200 OK):</b>
-        <pre>{"success": true, "token": "xxx-xxx", "isInitial": false, "permissions": ["Wiki"], "username": "your_name"}</pre>
-      </td>
-    </tr>
-  </table>
-  <br>
+    <div class="mdui-card">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title"><span class="method-tag method-post">POST</span> 修改密码</div>
+        <div class="mdui-card-primary-subtitle"><code>/api/change-password</code></div>
+      </div>
+      <div class="mdui-card-content">
+        <p><strong>请求体:</strong></p>
+        <pre>{ "newPassword": "my_new_password" }</pre>
+      </div>
+    </div>
 
-  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
-    <tr bgcolor="#CCCCCC">
-      <th width="20%">接口名称</th>
-      <th width="10%">请求方式</th>
-      <th width="30%">请求路径</th>
-      <th width="40%">说明</th>
-    </tr>
-    <tr>
-      <td><b>2. 获取个人信息</b></td>
-      <td align="center">GET</td>
-      <td><code>/api/me</code></td>
-      <td>获取当前 Token 对应用户的详细信息。</td>
-    </tr>
-  </table>
-  <br>
+    <div class="section-title">子应用集成</div>
 
-  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
-    <tr bgcolor="#CCCCCC">
-      <th width="20%">接口名称</th>
-      <th width="10%">请求方式</th>
-      <th width="30%">请求路径</th>
-      <th width="40%">说明</th>
-    </tr>
-    <tr>
-      <td><b>3. 修改密码</b></td>
-      <td align="center">POST</td>
-      <td><code>/api/change-password</code></td>
-      <td>更新当前用户的密码（首次登录强制调用此接口）。</td>
-    </tr>
-    <tr>
-      <td colspan="4">
-        <b>请求体 (JSON):</b>
-        <pre>{"newPassword": "my_new_password_123"}</pre>
-      </td>
-    </tr>
-  </table>
+    <div class="mdui-card">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title"><span class="method-tag method-post">POST</span> 令牌验证</div>
+        <div class="mdui-card-primary-subtitle"><code>/api/verify</code></div>
+      </div>
+      <div class="mdui-card-content">
+        <p>用于第三方或子应用验证 Token 有效性。</p>
+        <p><strong>请求体:</strong></p>
+        <pre>{
+  "token": "token_to_verify",
+  "app": "AppName" // 可选，指定当前应用名称
+}</pre>
+        <p><strong>成功响应:</strong></p>
+        <pre>{
+  "valid": true,
+  "username": "user_name",
+  "permissions": ["DataBoard", "Wiki"],
+  "has_all": false,
+  "authorized": true // 仅当传了 app 参数时返回。如果有 'all' 权限，此项始终为 true
+}</pre>
+      </div>
+    </div>
 
-  <hr>
+    <div class="section-title">管理员接口</div>
+    <p class="mdui-text-color-red">注意：以下接口仅限拥有管理员权限的账户调用！</p>
 
-  <a name="msg"></a>
-  <h2><font color="#800000">三、 内部消息接口</font></h2>
+    <div class="mdui-card">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title"><span class="method-tag method-post">POST</span> 创建用户</div>
+        <div class="mdui-card-primary-subtitle"><code>/api/admin/users</code></div>
+      </div>
+      <div class="mdui-card-content">
+        <pre>{ "username": "new_guy", "initialPassword": "pwd" }</pre>
+      </div>
+    </div>
 
-  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
-    <tr bgcolor="#CCCCCC">
-      <th width="20%">接口名称</th>
-      <th width="10%">请求方式</th>
-      <th width="30%">请求路径</th>
-      <th width="40%">说明</th>
-    </tr>
-    <tr>
-      <td><b>1. 发送消息</b></td>
-      <td align="center">POST</td>
-      <td><code>/api/messages</code></td>
-      <td>向工作室的其他成员发送一条站内信。</td>
-    </tr>
-    <tr>
-      <td colspan="4">
-        <b>请求体 (JSON):</b>
-        <pre>{"toUser": "target_username", "content": "Hello World!"}</pre>
-      </td>
-    </tr>
-    <tr>
-      <td><b>2. 获取收件箱</b></td>
-      <td align="center">GET</td>
-      <td><code>/api/messages</code></td>
-      <td>获取发送给当前用户的所有消息。</td>
-    </tr>
-  </table>
+    <div class="mdui-card">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title"><span class="method-tag method-post">POST</span> 一键全体赋权</div>
+        <div class="mdui-card-primary-subtitle"><code>/api/admin/users/grant-all</code></div>
+      </div>
+      <div class="mdui-card-content">
+        <p>给系统内所有账户赋予指定权限。</p>
+        <pre>{ "permission": "all" }</pre>
+      </div>
+    </div>
 
-  <hr>
+    <div class="mdui-card">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title"><span class="method-tag method-put">PUT</span> 更新用户权限</div>
+        <div class="mdui-card-primary-subtitle"><code>/api/admin/users/permissions</code></div>
+      </div>
+      <div class="mdui-card-content">
+        <pre>{ "username": "guy", "permissions": ["Wiki"] }</pre>
+      </div>
+    </div>
 
-  <a name="admin"></a>
-  <h2><font color="#800000">四、 管理员专属接口</font></h2>
-  <p><font color="#FF0000">注意：以下接口仅限拥有 <code>admin</code> 权限的账户调用！</font></p>
+  </div>
 
-  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
-    <tr bgcolor="#CCCCCC">
-      <th width="20%">接口名称</th>
-      <th width="10%">请求方式</th>
-      <th width="30%">请求路径</th>
-      <th width="40%">说明</th>
-    </tr>
-    <tr>
-      <td><b>1. 创建新用户</b></td>
-      <td align="center">POST</td>
-      <td><code>/api/admin/users</code></td>
-      <td>录入新成员，分配初始密码。</td>
-    </tr>
-    <tr>
-      <td colspan="4">
-        <b>请求体 (JSON):</b>
-        <pre>{"username": "new_guy", "initialPassword": "123456"}</pre>
-      </td>
-    </tr>
-    <tr>
-      <td><b>2. 更新用户权限</b></td>
-      <td align="center">PUT</td>
-      <td><code>/api/admin/users/permissions</code></td>
-      <td>修改用户可访问的子系统列表。</td>
-    </tr>
-    <tr>
-      <td colspan="4">
-        <b>请求体 (JSON):</b>
-        <pre>{"username": "new_guy", "permissions": ["DataBoard", "Wiki"]}</pre>
-      </td>
-    </tr>
-    <tr>
-      <td><b>3. 删除用户</b></td>
-      <td align="center">DELETE</td>
-      <td><code>/api/admin/users</code></td>
-      <td>永久注销该用户账号。</td>
-    </tr>
-    <tr>
-      <td colspan="4">
-        <b>请求体 (JSON):</b>
-        <pre>{"username": "user_to_delete"}</pre>
-      </td>
-    </tr>
-  </table>
-
-  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
-    <tr bgcolor="#CCCCCC">
-      <th width="20%">接口名称</th>
-      <th width="10%">请求方式</th>
-      <th width="30%">请求路径</th>
-      <th width="40%">说明</th>
-    </tr>
-    <tr>
-      <td><b>2. 获取个人信息</b></td>
-      <td align="center">GET</td>
-      <td><code>/api/me</code></td>
-      <td>获取当前 Token 对应用户的详细信息（包括头像）。</td>
-    </tr>
-    <tr>
-      <td colspan="4">
-        <b>成功响应示例 (JSON):</b>
-        <pre>{"username": "xiaolin930", "permissions": ["all"], "avatar": "https://example.com/avatar.png", "lastLogin": 1716388492000}</pre>
-      </td>
-    </tr>
-  </table>
-  <br>
-
-  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
-    <tr bgcolor="#CCCCCC">
-      <th width="20%">接口名称</th>
-      <th width="10%">请求方式</th>
-      <th width="30%">请求路径</th>
-      <th width="40%">说明</th>
-    </tr>
-    <tr>
-      <td><b>3. 更新头像</b></td>
-      <td align="center">POST</td>
-      <td><code>/api/update-avatar</code></td>
-      <td>更新当前用户的头像 URL 图片地址。</td>
-    </tr>
-    <tr>
-      <td colspan="4">
-        <b>请求体 (JSON):</b>
-        <pre>{"avatar": "https://example.com/new_avatar.png"}</pre>
-      </td>
-    </tr>
-  </table>
-  <br>
-
-  <hr>
-
-  <a name="verify"></a>
-  <h2><font color="#800000">五、 子应用接入接口</font></h2>
-  <p>供第三方或内部子应用（如 DataBoard 等）验证用户 Token 的有效性并获取用户权限。</p>
-
-  <table border="1" cellpadding="5" cellspacing="0" width="100%" bordercolor="#000000" bgcolor="#FFFFFF">
-    <tr bgcolor="#CCCCCC">
-      <th width="20%">接口名称</th>
-      <th width="10%">请求方式</th>
-      <th width="30%">请求路径</th>
-      <th width="40%">说明</th>
-    </tr>
-    <tr>
-      <td><b>1. Token 查验</b></td>
-      <td align="center">POST</td>
-      <td><code>/api/verify</code></td>
-      <td>校验前端传来的会话 Token 是否有效，并返回关联的用户及权限信息。</td>
-    </tr>
-    <tr>
-      <td colspan="4">
-        <b>请求体 (JSON):</b>
-        <pre>{"token": "需要验证的_Token"}</pre>
-        <b>成功响应 (有效 Token):</b>
-        <pre>{"valid": true, "username": "user_name", "permissions": ["DataBoard", "Wiki"]}</pre>
-        <b>失败响应 (无效或过期 Token):</b>
-        <pre>{"valid": false}</pre>
-      </td>
-    </tr>
-  </table>
-
-</td>
-</tr>
-</table>
-
-<br><br>
-<center>
-  <hr width="50%" size="1" color="#000000">
-  <p><font size="-1">
-    <p>使用cloudflare pages托管</p><br>
-    &copy; 2026 Nexabox.
-  </font></p>
-</center>
-
+  <script src="https://cdn.jsdelivr.net/npm/mdui@1.0.2/dist/js/mdui.min.js"></script>
 </body>
 </html>
