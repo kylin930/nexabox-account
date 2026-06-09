@@ -161,14 +161,25 @@ async function routeRequest(path, method, request, env) {
       const { permission } = await request.json();
       if (!permission) return new Response('Missing Permission Name', { status: 400 });
       
+      const permsToAdd = permission.split(',').map(p => p.trim()).filter(p => p !== '');
+      if (permsToAdd.length === 0) return new Response('Invalid Permission Name', { status: 400 });
+
       const list = await env.STUDIO_KV.list({ prefix: 'user:' });
       let count = 0;
       for (const item of list.keys) {
         const user = await env.STUDIO_KV.get(item.name, 'json');
-        if (user && !user.permissions.includes(permission)) {
-          user.permissions.push(permission);
-          await env.STUDIO_KV.put(item.name, JSON.stringify(user));
-          count++;
+        if (user) {
+          let modified = false;
+          permsToAdd.forEach(p => {
+            if (!user.permissions.includes(p)) {
+              user.permissions.push(p);
+              modified = true;
+            }
+          });
+          if (modified) {
+            await env.STUDIO_KV.put(item.name, JSON.stringify(user));
+            count++;
+          }
         }
       }
       return Response.json({ success: true, count });
