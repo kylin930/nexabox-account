@@ -176,8 +176,22 @@
         body: JSON.stringify({ newPassword })
       });
       if (res.ok) {
-        mdui.alert('密码修改成功！');
-        document.getElementById('new-password').value = '';
+        mdui.alert('密码修改成功！', '提示', () => {
+          const params = new URLSearchParams(window.location.search);
+          const targetApp = params.get('app');
+          const redirectUrl = params.get('redirect');
+          
+          if (targetApp && redirectUrl) {
+            const perms = JSON.parse(localStorage.getItem('studio_perms') || '[]');
+            if (perms.includes('all') || perms.includes(targetApp)) {
+              const url = new URL(redirectUrl, window.location.origin);
+              url.searchParams.set('token', token);
+              window.location.href = url.toString();
+              return;
+            }
+          }
+          document.getElementById('new-password').value = '';
+        });
       }
     }
 
@@ -221,7 +235,18 @@
 
     function logout() {
       localStorage.removeItem('studio_auth_token');
-      window.location.href = '/login.html';
+      localStorage.removeItem('studio_perms');
+      const params = new URLSearchParams(window.location.search);
+      const targetApp = params.get('app');
+      const redirectUrl = params.get('redirect');
+      let target = '/login.html';
+      if (targetApp || redirectUrl) {
+        target += '?';
+        if (targetApp) target += `app=${encodeURIComponent(targetApp)}&`;
+        if (redirectUrl) target += `redirect=${encodeURIComponent(redirectUrl)}`;
+        if (target.endsWith('&')) target = target.slice(0, -1);
+      }
+      window.location.href = target;
     }
 
     // 检查是否需要修改密码（从 URL 参数）

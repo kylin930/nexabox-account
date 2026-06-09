@@ -54,6 +54,46 @@
 
   <script src="https://cdn.jsdelivr.net/npm/mdui@1.0.2/dist/js/mdui.min.js"></script>
   <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetApp = urlParams.get('app');
+    const redirectUrl = urlParams.get('redirect');
+
+    window.onload = async function() {
+      const savedToken = localStorage.getItem('studio_auth_token');
+      if (savedToken) {
+        try {
+          const verifyRes = await fetch('/api/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: savedToken, app: targetApp })
+          });
+          const verifyData = await verifyRes.json();
+          
+          if (verifyData.valid) {
+            handleFinalRedirect(savedToken, verifyData.permissions);
+          } else {
+            localStorage.removeItem('studio_auth_token');
+          }
+        } catch (e) {
+          console.error("Token verification failed", e);
+        }
+      }
+    };
+
+    function handleFinalRedirect(token, permissions) {
+      if (targetApp && redirectUrl) {
+        if (permissions.includes('all') || permissions.includes(targetApp)) {
+          const url = new URL(redirectUrl, window.location.origin);
+          url.searchParams.set('token', token);
+          window.location.href = url.toString();
+        } else {
+          mdui.alert(`您没有应用 ${targetApp} 的访问权限！`);
+        }
+      } else {
+        window.location.href = '/index.html';
+      }
+    }
+
     async function doLogin() {
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
@@ -67,20 +107,24 @@
         const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ username, password, app: targetApp })
         });
 
         if (res.ok) {
           const data = await res.json();
           localStorage.setItem('studio_auth_token', data.token);
           localStorage.setItem('studio_username', data.username);
+          localStorage.setItem('studio_perms', JSON.stringify(data.permissions));
           
           if (data.isInitial) {
             mdui.alert('检测到您是首次登录，请先修改初始密码。', '安全提示', () => {
-              window.location.href = '/index.html?change_pwd=1';
+              let target = '/index.html?change_pwd=1';
+              if (targetApp) target += `&app=${encodeURIComponent(targetApp)}`;
+              if (redirectUrl) target += `&redirect=${encodeURIComponent(redirectUrl)}`;
+              window.location.href = target;
             });
           } else {
-            window.location.href = '/index.html';
+            handleFinalRedirect(data.token, data.permissions);
           }
         } else {
           const text = await res.text();

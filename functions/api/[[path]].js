@@ -190,7 +190,7 @@ async function routeRequest(path, method, request, env) {
 }
 
 async function handleLogin(request, env) {
-  const { username, password } = await request.json();
+  const { username, password, app } = await request.json();
   let isValid = false;
   let isInitial = false;
   let permissions = [];
