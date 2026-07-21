@@ -121,6 +121,21 @@ async function routeRequest(path, method, request, env) {
         return Response.json(responseData);
       }
       break;
+    case '/api/user-config':
+      if (method === 'GET') {
+        const config = await env.STUDIO_KV.get(`user:config:${currentUser}`, 'json') || {};
+        return Response.json(config);
+      }
+      if (method === 'POST') {
+        const newConfig = await request.json();
+        await env.STUDIO_KV.put(`user:config:${currentUser}`, JSON.stringify(newConfig));
+        return Response.json({ success: true });
+      }
+      if (method === 'DELETE') {
+        await env.STUDIO_KV.delete(`user:config:${currentUser}`);
+        return Response.json({ success: true });
+      }
+      break;
   }
 
   // Admin routes
