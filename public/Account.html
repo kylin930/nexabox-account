@@ -337,7 +337,26 @@
                     <input type="password" id="passwordInput" placeholder="输入新密码" />
                     <button class="btn" id="updatePasswordBtn">修改密码</button>
                 </div>
+                <!-- 在 Account.html 的设置区域添加 -->
+                <div class="field-group">
+                    <label><i class="fas fa-palette"></i> 背景颜色</label>
+                    <input type="color" id="bgColorPicker" value="#1e1e2f" />
+                </div>
+                <div class="field-group">
+                    <label><i class="fas fa-image"></i> 背景图片 URL</label>
+                    <input type="text" id="bgImageInput" placeholder="输入图片链接（留空则使用颜色）" />
+                    <button class="btn" id="saveBgConfigBtn">保存背景设置</button>
+                </div>
             </div>
+        </div>
+        <div class="card">
+            <div class="card-title"><i class="fas fa-undo-alt"></i> 个性化设置</div>
+                <p style="color: #8a9bb5; font-size: 14px; margin-bottom: 12px;">
+                    重置所有个性化设置（背景颜色、背景图片、透明度等）到系统默认值。
+                </p>
+                <button class="btn" id="resetConfigBtn" style="border-color: #e74c3c; color: #e74c3c;">
+                    <i class="fas fa-trash-alt"></i> 重置个性化设置
+                </button>
         </div>
 
         <!-- 消息 -->
@@ -509,6 +528,48 @@
             }
             document.getElementById('updatePasswordBtn').addEventListener('click', updatePassword);
 
+
+            //5.1 个性化
+            document.getElementById('saveBgConfigBtn').addEventListener('click', async () => {
+                const backgroundColor = document.getElementById('bgColorPicker').value;
+                const backgroundImage = document.getElementById('bgImageInput').value.trim();
+                const config = { backgroundColor, backgroundImage };
+                try {
+                    const res = await apiRequest('/user-config', {
+                        method: 'POST',
+                        body: JSON.stringify(config)
+                   });
+                   if (res.success) {
+                       showToast('背景设置已保存', 'success');
+                        // 可以立即预览（但Account.html本身背景可能不同，可以重新加载页面）
+                    } else {
+                        showToast('保存失败', 'error');
+                    }
+                } catch (e) {
+                    showToast('保存失败：' + e.message, 'error');
+                }
+            });
+            //5.1.1 重制
+            document.getElementById('resetConfigBtn').addEventListener('click', async () => {
+                if (!confirm('确定要重置所有个性化设置吗？这将恢复默认背景和布局。')) return;
+                    try {
+                        const token = getToken();
+                        const res = await fetch('/api/user-config', {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (res.ok) {
+                            showToast('个性化设置已重置为默认值', 'success');
+                            // 刷新页面以应用默认配置
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            const err = await res.json();
+                            showToast('重置失败：' + (err.error || '未知错误'), 'error');
+                        }
+                    } catch (e) {
+                        showToast('重置失败：' + e.message, 'error');
+                    }
+            });
             // ============================================================
             //  6. 发送消息
             // ============================================================
@@ -599,6 +660,5 @@
             console.log('✅ Account 页面已加载');
         })();
     </script>
-
 </body>
 </html>
