@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>登录 · Nexabox 工作台</title>
+    <!-- Font Awesome 用于工业图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* ===== 全局重置 & 工业风格 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1d23;
+            /* 深灰工业底色 */
+            font-family: 'Segoe UI', 'Roboto', 'Consolas', monospace;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            /* 工业斜纹背景（极简） */
+            background-image: repeating-linear-gradient(45deg,
+                    rgba(255, 255, 255, 0.01) 0px,
+                    rgba(255, 255, 255, 0.01) 2px,
+                    rgba(0, 0, 0, 0.02) 2px,
+                    rgba(0, 0, 0, 0.02) 4px);
+        }
+
+        /* ===== 登录卡片 — 直角，硬边框 ===== */
+        .login-container {
+            background: #23272e;
+            border: 2px solid #3a4050;
+            border-radius: 0;
+            /* 直角！ */
+            padding: 44px 40px 36px 40px;
+            width: 400px;
+            max-width: 92%;
+            box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.5);
+            transition: box-shadow 0.15s ease;
+            position: relative;
+        }
+
+        /* 工业装饰线 */
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 20px;
+            right: 20px;
+            height: 4px;
+            background: #4a8bf5;
+            /* 工业蓝高亮 */
+        }
+
+        /* ===== 标题区 ===== */
+        .login-logo {
+            font-size: 36px;
+            font-weight: 300;
+            color: #e8edf3;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-family: 'Consolas', 'Courier New', monospace;
+            margin-bottom: 2px;
+        }
+
+        .login-logo span {
+            font-weight: 700;
+            color: #4a8bf5;
+        }
+
+        .login-sub {
+            color: #8a9bb5;
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 1px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #2f3644;
+            padding-bottom: 14px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .login-sub i {
+            margin-right: 8px;
+            opacity: 0.6;
+        }
+
+        /* ===== 表单 ===== */
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            text-align: left;
+        }
+
+        .login-form .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .login-form label {
+            color: #b0c0d6;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-family: 'Consolas', monospace;
+        }
+
+        .login-form label i {
+            margin-right: 6px;
+            color: #4a8bf5;
+            width: 18px;
+        }
+
+        .login-form input {
+            width: 100%;
+            padding: 12px 14px;
+            background: #14181e;
+            border: 1.5px solid #3a4050;
+            border-radius: 0;
+            /* 直角 */
+            color: #e0e8f0;
+            font-size: 15px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            transition: all 0.15s ease;
+            outline: none;
+        }
+
+        .login-form input::placeholder {
+            color: #4a5568;
+            font-weight: 300;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .login-form input:focus {
+            border-color: #4a8bf5;
+            background: #1a2029;
+            box-shadow: inset 0 0 0 1px #4a8bf5;
+        }
+
+        /* ===== 按钮 — 直角，工业感 ===== */
+        .login-btn {
+            margin-top: 10px;
+            padding: 14px;
+            background: #2f3644;
+            border: 2px solid #4a8bf5;
+            border-radius: 0;
+            color: #4a8bf5;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .login-btn:hover {
+            background: #4a8bf5;
+            color: #14181e;
+            box-shadow: 4px 4px 0 rgba(74, 139, 245, 0.3);
+        }
+
+        .login-btn:active {
+            transform: scale(0.97);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+            background: #2f3644;
+            color: #4a8bf5;
+        }
+
+        /* ===== 错误信息 ===== */
+        .login-error {
+            color: #ff6b6b;
+            font-size: 13px;
+            min-height: 22px;
+            margin-top: 2px;
+            text-align: center;
+            font-weight: 400;
+            font-family: 'Consolas', monospace;
+            background: rgba(255, 107, 107, 0.08);
+            padding: 4px 0;
+            border-left: 3px solid #ff6b6b;
+        }
+
+        /* ===== 加载状态 ===== */
+        .login-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #4a8bf5;
+            border-top-color: transparent;
+            border-radius: 0;
+            /* 直角旋转器（工业感） */
+            animation: spinRect 0.9s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spinRect {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ===== 底部 ===== */
+        .login-footer {
+            margin-top: 28px;
+            padding-top: 18px;
+            border-top: 1px solid #2f3644;
+            color: #4a5a6e;
+            font-size: 12px;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+            font-family: 'Consolas', monospace;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .login-footer .status {
+            color: #4a8bf5;
+        }
+
+        .login-footer .status i {
+            margin-right: 4px;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 440px) {
+            .login-container {
+                padding: 28px 18px 24px 18px;
+            }
+            .login-logo {
+                font-size: 28px;
+            }
+            .login-btn {
+                font-size: 14px;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <!-- 标题 -->
+        <div class="login-logo">
+            <span>Nexa</span>box
+        </div>
+        <div class="login-sub">
+            <i class="fas fa-terminal"></i> 工作台 · 安全登录
+        </div>
+
+        <!-- 登录表单 -->
+        <form class="login-form" id="loginForm" autocomplete="off">
+            <div class="field">
+                <label for="username"><i class="fas fa-user"></i> 用户名</label>
+                <input
+                type="text"
+                id="username"
+                placeholder="输入用户名"
+                autocomplete="username"
+                required
+                />
+            </div>
+            <div class="field">
+                <label for="password"><i class="fas fa-lock"></i> 密码</label>
+                <input
+                type="password"
+                id="password"
+                placeholder="输入密码"
+                autocomplete="current-password"
+                required
+                />
+            </div>
+
+            <div class="login-error" id="loginError"></div>
+
+            <button type="submit" class="login-btn" id="loginBtn">
+                <i class="fas fa-sign-in-alt" style="margin-right:8px;"></i> 登录
+            </button>
+        </form>
+
+        <div class="login-footer">
+            <span>Nexabox</span>
+            <span class="status"><i class="fas fa-shield-alt"></i> 加密连接</span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const form = document.getElementById('loginForm');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const loginBtn = document.getElementById('loginBtn');
+            const errorEl = document.getElementById('loginError');
+
+            // 从 URL 参数读取预设用户名
+            const urlParams = new URLSearchParams(window.location.search);
+            const presetUser = urlParams.get('username');
+            if (presetUser) {
+                usernameInput.value = presetUser;
+            }
+
+            // 自动聚焦
+            if (usernameInput.value) {
+                passwordInput.focus();
+            } else {
+                usernameInput.focus();
+            }
+
+            // ===== 核心登录逻辑 =====
+            async function handleLogin(e) {
+                e.preventDefault();
+
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value.trim();
+
+                if (!username || !password) {
+                    errorEl.textContent = '⚠ 请输入用户名和密码';
+                    return;
+                }
+
+                // 禁用按钮，显示加载状态
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<span class="login-spinner"></span> 验证中...';
+                errorEl.textContent = '';
+
+                try {
+                    const response = await fetch('https://accounts.nexabox.de/api/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            username: username,
+                            password: password,
+                        }),
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.message || `请求失败 (${response.status})`);
+                    }
+
+                    if (data.success === true && data.token) {
+                        // ===== 登录成功 =====
+                        const payload = {
+                            token: data.token,
+                            username: data.username || username,
+                            permissions: data.permissions || [],
+                            isInitial: data.isInitial || false,
+                        };
+
+                        // 保存到 localStorage（供其他页面使用）
+                        localStorage.setItem('nexabox_token', data.token);
+                        localStorage.setItem('nexabox_username', payload.username);
+                        //兼容OSS
+                        localStorage.setItem('studio_auth_token', data.token);
+                        localStorage.setItem('studio_username', data.username);
+                        localStorage.setItem('studio_perms', JSON.stringify(data.permissions || []));
+
+                        // 判断是否在 iframe 中
+                        if (window.parent !== window) {
+                        // 在 iframe 中，通过 postMessage 通知父页面
+                            window.parent.postMessage({
+                                type: 'NEXABOX_LOGIN_SUCCESS',
+                                payload: payload,
+                            }, '*');
+                        // 显示成功信息但不跳转，等待父页面处理
+                            loginBtn.innerHTML = '✅ 登录成功，正在进入...';
+                            loginBtn.style.borderColor = '#2ecc71';
+                            loginBtn.style.color = '#2ecc71';
+                            // 可选：禁用表单
+                            loginBtn.disabled = true;
+                            // 不执行跳转
+                        } else {
+                        // 独立窗口，按原逻辑跳转
+                            const redirect = new URLSearchParams(window.location.search).get('redirect');
+                            if (redirect) {
+                                window.location.href = decodeURIComponent(redirect);
+                            } else {
+                                window.location.href = 'MainMenu.html';
+                            }
+                        }
+                    } else {
+                        throw new Error(data.message || '登录失败，请检查凭证');
+                    }
+
+                } catch (err) {
+                    errorEl.textContent = '✗ ' + (err.message || '网络错误，请稍后重试');
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:8px;"></i> 登录';
+                    loginBtn.style.borderColor = '#4a8bf5';
+                    loginBtn.style.color = '#4a8bf5';
+                }
+            }
+
+            form.addEventListener('submit', handleLogin);
+
+            // 监听来自父页面的消息（可选）
+            window.addEventListener('message', function(event) {
+                if (event.data && event.data.type === 'NEXABOX_REQUEST_LOGIN_STATUS') {
+                    // 如果有 token，可以重新发送
+                    const token = localStorage.getItem('nexabox_token');
+                    if (token) {
+                        // 可以通知父页面已登录
+                    }
+                }
+            });
+
+            console.log('[Nexabox Login]已就绪');
+        })();
+    </script>
+
+</body>
+</html>
