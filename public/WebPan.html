@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NexaboxDrive 网盘面板</title>
+    <!-- 引入 Font Awesome 图标库，让界面更美观 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* ---------- 全局样式 ---------- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f4f7fc;
+            color: #333;
+            padding: 20px;
+        }
+
+        /* 主容器：模拟桌面面板 */
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            padding: 24px 30px 30px;
+        }
+
+        /* ---------- 头部 ---------- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eef2f7;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1 i {
+            color: #2a7de1;
+        }
+
+        .token-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .token-area input {
+            padding: 8px 14px;
+            border: 1px solid #d0d7e2;
+            border-radius: 30px;
+            font-size: 14px;
+            width: 220px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .token-area input:focus {
+            border-color: #2a7de1;
+            box-shadow: 0 0 0 3px rgba(42, 125, 225, 0.15);
+        }
+
+        .token-area .hint {
+            font-size: 13px;
+            color: #888;
+        }
+
+        /* ---------- 工具栏 ---------- */
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar button {
+            background: #fff;
+            border: 1px solid #d0d7e2;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1f2a3a;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.15s;
+        }
+
+        .toolbar button i {
+            font-size: 14px;
+        }
+
+        .toolbar button:hover {
+            background: #f0f4fe;
+            border-color: #2a7de1;
+            color: #2a7de1;
+        }
+
+        .toolbar button.primary {
+            background: #2a7de1;
+            border-color: #2a7de1;
+            color: #fff;
+        }
+
+        .toolbar button.primary:hover {
+            background: #1a5fb0;
+            border-color: #1a5fb0;
+            color: #fff;
+        }
+
+        /* ---------- 搜索栏 ---------- */
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 10px 16px;
+            border: 1px solid #d0d7e2;
+            border-radius: 30px;
+            font-size: 14px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: #2a7de1;
+            box-shadow: 0 0 0 3px rgba(42, 125, 225, 0.12);
+        }
+
+        .search-box button {
+            padding: 10px 28px;
+            background: #2a7de1;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-box button:hover {
+            background: #1a5fb0;
+        }
+
+        /* ---------- 文件列表 ---------- */
+        .file-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #6b7a8f;
+            border-bottom: 1px solid #eef2f7;
+            padding-bottom: 8px;
+        }
+
+        .file-list-header .count {
+            font-weight: 500;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 4px;
+            border-bottom: 1px solid #f0f3f8;
+            transition: 0.1s;
+        }
+
+        .file-item:hover {
+            background: #f8faff;
+            border-radius: 8px;
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        .file-item .info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .file-item .info i {
+            font-size: 20px;
+            width: 28px;
+            text-align: center;
+            color: #5f6b7a;
+        }
+
+        .file-item .info i.folder-icon {
+            color: #f5b342;
+        }
+
+        .file-item .info .name {
+            font-weight: 500;
+            word-break: break-all;
+        }
+
+        .file-item .info .path {
+            font-size: 13px;
+            color: #8a9aa8;
+            margin-left: 6px;
+        }
+
+        .file-item .meta {
+            font-size: 13px;
+            color: #6b7a8f;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            flex-shrink: 0;
+        }
+
+        .file-item .meta .size {
+            white-space: nowrap;
+        }
+
+        .file-item .tag {
+            font-size: 11px;
+            background: #eef2f7;
+            padding: 2px 12px;
+            border-radius: 30px;
+            color: #4a5a6e;
+        }
+
+        .file-item .tag.folder-tag {
+            background: #e8edf5;
+            color: #2a5f8a;
+        }
+
+        /* ---------- 空状态 ---------- */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8a9aa8;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }
+
+        /* ---------- 加载提示 ---------- */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7a8f;
+        }
+
+        .loading i {
+            margin-right: 8px;
+        }
+
+        /* ---------- 响应式 ---------- */
+        @media (max-width: 700px) {
+            .dashboard {
+                padding: 16px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .token-area input {
+                width: 100%;
+            }
+            .file-item {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .file-item .meta {
+                margin-left: 42px;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <!-- 头部：标题 + Token 配置 -->
+        <div class="header">
+            <h1>
+                <i class="fas fa-cloud"></i> NexaboxDrive
+                <span style="font-size: 14px; font-weight: 400; color: #6b7a8f; margin-left: 4px;">Web 面板</span>
+            </h1>
+            <div class="token-area">
+                <input type="text" id="tokenInput" placeholder="请输入您的 Token" />
+                <span class="hint"><i class="fas fa-key"></i> Authorization</span>
+            </div>
+        </div>
+
+        <!-- 工具栏 -->
+        <div class="toolbar">
+            <button class="primary" onclick="loadRootFiles()">
+                <i class="fas fa-home"></i> 根目录
+            </button>
+            <button onclick="loadRootFiles()">
+                <i class="fas fa-sync-alt"></i> 刷新
+            </button>
+            <button onclick="document.getElementById('searchInput').value=''; searchFiles();">
+                <i class="fas fa-times"></i> 清除搜索
+            </button>
+        </div>
+
+        <!-- 搜索栏 -->
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="输入关键字搜索文件（不区分大小写）" />
+            <button onclick="searchFiles()">
+                <i class="fas fa-search"></i> 搜索
+            </button>
+        </div>
+
+        <!-- 文件列表头部 -->
+        <div class="file-list-header">
+            <span class="count" id="fileCount">共 0 个项目</span>
+            <span id="currentPath" style="font-weight:400;">📍 /</span>
+        </div>
+
+        <!-- 文件列表容器 -->
+        <div id="fileList">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> 加载中，请稍候...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  1. 配置
+        // ============================================================
+        const API_BASE = 'https://drive.nexabox.de';   // API 基础地址[reference:1]
+
+        // 从 localStorage 读取上次保存的 Token
+        let authToken = localStorage.getItem('nexabox_token') || '';
+
+        // 页面加载时，将 Token 填入输入框
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('tokenInput');
+            if (authToken) {
+                input.value = authToken;
+            }
+            // 自动加载根目录
+            loadRootFiles();
+        });
+
+        // 监听 Token 输入变化，实时保存
+        document.getElementById('tokenInput').addEventListener('change', function() {
+            authToken = this.value.trim();
+            localStorage.setItem('nexabox_token', authToken);
+        });
+
+        // ============================================================
+        //  2. 核心 API 请求函数
+        // ============================================================
+
+        /**
+         * 封装的 fetch 请求，自动添加 Authorization 头
+         */
+        async function apiRequest(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            const headers = {
+                'Accept': 'application/json',
+                ...options.headers,
+            };
+
+            // 如果存在 Token，则添加到 Authorization 头[reference:2]
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const response = await fetch(url, {
+                ...options,
+                headers,
+            });
+
+            if (!response.ok) {
+                let errorMsg = `请求失败 (${response.status})`;
+                try {
+                    const errData = await response.json();
+                    if (errData.message) errorMsg = errData.message;
+                } catch (_) { /* ignore */ }
+                throw new Error(errorMsg);
+            }
+
+            // 如果响应为空，返回 null
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
+        }
+
+        // ============================================================
+        //  3. 业务功能：获取文件列表 & 搜索
+        // ============================================================
+
+        /**
+         * 加载指定路径的文件列表
+         * @param {string} path - 目录路径，默认为 '/'
+         */
+        async function loadFiles(path = '/') {
+            const container = document.getElementById('fileList');
+            const countEl = document.getElementById('fileCount');
+            const pathEl = document.getElementById('currentPath');
+
+            // 显示加载状态
+            container.innerHTML = `<div class="loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>`;
+
+            try {
+                // 调用 /api/files 接口[reference:3]
+                const data = await apiRequest(`/api/files?path=${encodeURIComponent(path)}`);
+
+                // 更新路径显示
+                pathEl.textContent = `📍 ${path || '/'}`;
+
+                // 渲染文件列表
+                renderFileList(data, container, countEl);
+
+            } catch (error) {
+                container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-circle" style="color:#e74c3c;"></i>
+                            <p style="color:#e74c3c;">加载失败：${error.message}</p>
+                            <p style="font-size:13px; margin-top:6px;">请检查 Token 是否正确，或网络是否通畅。</p>
+                        </div>
+                    `;
+                countEl.textContent = '加载失败';
+            }
+        }
+
+        /**
+         * 搜索文件
+         */
+        async function searchFiles() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            const container = document.getElementById('fileList');
+            const countEl = document.getElementById('fileCount');
+            const pathEl = document.getElementById('currentPath');
+
+            if (!keyword) {
+                // 如果关键字为空，回到根目录
+                loadRootFiles();
+                return;
+            }
+
+            container.innerHTML = `<div class="loading"><i class="fas fa-spinner fa-spin"></i> 搜索中...</div>`;
+
+            try {
+                // 调用 /api/search 接口[reference:4]
+                const data = await apiRequest(`/api/search?keyword=${encodeURIComponent(keyword)}`);
+
+                pathEl.textContent = `🔍 搜索结果：“${keyword}”`;
+                renderFileList(data, container, countEl, true);
+
+            } catch (error) {
+                container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-circle" style="color:#e74c3c;"></i>
+                            <p style="color:#e74c3c;">搜索失败：${error.message}</p>
+                        </div>
+                    `;
+                countEl.textContent = '搜索失败';
+            }
+        }
+
+        /**
+         * 加载根目录（便捷方法）
+         */
+        function loadRootFiles() {
+            document.getElementById('searchInput').value = '';
+            loadFiles('/');
+        }
+
+        // ============================================================
+        //  4. 渲染函数
+        // ============================================================
+
+        /**
+         * 渲染文件列表到容器
+         * @param {Array} files - 文件/文件夹数组
+         * @param {HTMLElement} container - 容器元素
+         * @param {HTMLElement} countEl - 显示数量的元素
+         * @param {boolean} isSearch - 是否为搜索结果
+         */
+        function renderFileList(files, container, countEl, isSearch = false) {
+            // 如果数据不是数组，或者为空
+            if (!Array.isArray(files) || files.length === 0) {
+                container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-folder-open"></i>
+                            <p>此目录为空</p>
+                            ${isSearch ? '<p style="font-size:13px;">试试其他关键字</p>' : ''}
+                        </div>
+                    `;
+                countEl.textContent = '共 0 个项目';
+                return;
+            }
+
+            // 构建列表 HTML
+            let html = '';
+            files.forEach(item => {
+                // 判断是否为文件夹[reference:5]
+                const isFolder = item.isFolder === true;
+                const icon = isFolder ? '<i class="fas fa-folder folder-icon"></i>' : '<i class="fas fa-file"></i>';
+                const sizeText = isFolder ? '—' : formatFileSize(item.size);
+                const tagClass = isFolder ? 'folder-tag' : '';
+                const tagText = isFolder ? '📁 文件夹' : '📄 文件';
+
+                // 显示路径（如果是搜索结果，显示 path 字段）[reference:6]
+                const pathDisplay = isSearch && item.path ? ` <span class="path">${item.path}</span>` : '';
+
+                html += `
+                        <div class="file-item">
+                            <div class="info">
+                                ${icon}
+                                <span class="name">${escapeHtml(item.filename || item.name || '未命名')}${pathDisplay}</span>
+                            </div>
+                            <div class="meta">
+                                <span class="size">${sizeText}</span>
+                                <span class="tag ${tagClass}">${tagText}</span>
+                            </div>
+                        </div>
+                    `;
+            });
+
+            container.innerHTML = html;
+            countEl.textContent = `共 ${files.length} 个项目`;
+        }
+
+        // ============================================================
+        //  5. 工具函数
+        // ============================================================
+
+        /**
+         * 格式化文件大小
+         */
+        function formatFileSize(bytes) {
+            if (bytes === undefined || bytes === null) return '—';
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            const size = (bytes / Math.pow(k, i)).toFixed(1);
+            return size + ' ' + sizes[i];
+        }
+
+        /**
+         * 简单的防 XSS 转义
+         */
+        function escapeHtml(text) {
+            if (!text) return '';
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // ============================================================
+        //  6. 将核心函数暴露到全局，供 HTML 中的 onclick 调用
+        // ============================================================
+        window.loadRootFiles = loadRootFiles;
+        window.loadFiles = loadFiles;
+        window.searchFiles = searchFiles;
+    </script>
+
+</body>
+</html>

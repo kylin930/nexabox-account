@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终端 - Nexabox CLI</title>
+    <style>
+        /* 终端全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0c0c0c;
+            font-family: 'Consolas', 'Courier New', monospace;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 8px;
+        }
+        #terminal {
+            flex: 1;
+            background: #1e1e1e;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            padding: 10px 14px;
+            overflow: hidden;
+            color: #33ff33;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        #output {
+            flex: 1;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-bottom: 6px;
+        }
+        #output .prompt-line {
+            color: #33ff33;
+        }
+        #output .error {
+            color: #ff5555;
+        }
+        #output .info {
+            color: #55ccff;
+        }
+        #output .success {
+            color: #55ff55;
+        }
+        #input-line {
+            display: flex;
+            align-items: center;
+            border-top: 1px solid #444;
+            padding-top: 6px;
+        }
+        #input-line .prompt {
+            color: #33ff33;
+            margin-right: 8px;
+            font-weight: bold;
+        }
+        #input-line input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #33ff33;
+            font-family: inherit;
+            font-size: 15px;
+            padding: 4px 0;
+        }
+        #input-line input::selection {
+            background: #33ff33;
+            color: #000;
+        }
+        /* 滚动条美化 */
+        #output::-webkit-scrollbar {
+            width: 6px;
+        }
+        #output::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+        #output::-webkit-scrollbar-thumb {
+            background: #33ff33;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="terminal">
+        <div id="output">
+            <span class="info">Nexabox Web CLI v1.0 (Build 4065)</span><br>
+            <span class="info">Type 'help' for a list of commands.</span><br>
+            <span class="info">Token loaded from localStorage.</span><br>
+        </div>
+        <div id="input-line">
+            <span class="prompt">└──&gt;</span>
+            <input type="text" id="cmdInput" autofocus spellcheck="false" autocomplete="off" />
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        //  1. 工具函数
+        // ================================================================
+        const output = document.getElementById('output');
+        const cmdInput = document.getElementById('cmdInput');
+
+        function log(message, type = '') {
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = message;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearOutput() {
+            output.innerHTML = '';
+        }
+
+        // 获取 Token
+        function getToken() {
+            return localStorage.getItem('nexabox_token') || sessionStorage.getItem('nexabox_token') || '';
+        }
+
+        // 带 Token 的 fetch 封装
+        async function apiRequest(endpoint, options = {}) {
+            const token = getToken();
+            const headers = {
+                'Accept': 'application/json',
+                ...options.headers,
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            const url = endpoint.startsWith('http') ? endpoint : `https://drive.nexabox.de${endpoint}`;
+            const response = await fetch(url, {
+                ...options,
+                headers,
+            });
+            if (!response.ok) {
+                let errMsg = `HTTP ${response.status}`;
+                try {
+                    const errData = await response.json();
+                    if (errData.message) errMsg = errData.message;
+                } catch (_) {}
+                throw new Error(errMsg);
+            }
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
+        }
+
+        // ================================================================
+        //  2. 命令定义与执行
+        // ================================================================
+
+        // 命令字典：命令名 -> { description, args: 参数说明, handler: async function }
+        const commands = {};
+
+        // ---------- 帮助 ----------
+        commands.help = {
+            description: '显示此帮助信息',
+            args: '',
+            handler: async () => {
+                log('可用命令列表：', 'info');
+                for (const [name, cmd] of Object.entries(commands)) {
+                    log(`  ${name} ${cmd.args}  —  ${cmd.description}`, 'info');
+                }
+                log('提示：使用 --help 查看命令详细用法（如 where --help）', 'info');
+            }
+        };
+
+        // ---------- 退出 ----------
+        commands.exit = {
+            description: '关闭终端窗口',
+            args: '',
+            handler: async () => {
+                log('正在退出...', 'info');
+                // 如果是 WinBox 打开，尝试关闭自身
+                if (window.parent && window.parent.WinBox) {
+                    // 找到当前窗口实例并关闭
+                    const win = window.parent.windows?.terminal;
+                    if (win && !win.isClosed()) {
+                        win.close();
+                        return;
+                    }
+                }
+                // 否则只是清屏并提示
+                clearOutput();
+                log('终端已关闭（如需重新打开，请点击磁贴）', 'info');
+            }
+        };
+
+        // ---------- whoami ----------
+        commands.whoami = {
+            description: '显示当前用户信息',
+            args: '',
+            handler: async () => {
+                try {
+                    const data = await apiRequest('https://accounts.nexabox.de/api/me');
+                    log(`用户名: ${data.username}`, 'success');
+                    log(`权限: ${data.permissions.join(', ')}`, 'success');
+                    const lastLogin = new Date(data.lastLogin).toLocaleString();
+                    log(`上次登录: ${lastLogin}`, 'success');
+                } catch (e) {
+                    log(`错误: ${e.message}`, 'error');
+                }
+            }
+        };
+
+        // ---------- where (搜索) ----------
+        commands.where = {
+            description: '搜索文件 (支持通配符 *)',
+            args: '<keyword>',
+            handler: async (args) => {
+                if (args.length < 1) {
+                    log('用法: where <关键词>', 'error');
+                    return;
+                }
+                const keyword = args.join(' ');
+                log(`正在搜索 “${keyword}” ...`, 'info');
+                try {
+                    const data = await apiRequest(`/api/search?keyword=${encodeURIComponent(keyword)}`);
+                    if (!Array.isArray(data) || data.length === 0) {
+                        log('没有找到匹配的文件。', 'info');
+                        return;
+                    }
+                    data.forEach(file => {
+                        log(`📄 ${file.filename}  (${file.size} bytes)  ${file.path || '/'}`, 'success');
+                    });
+                    log(`共 ${data.length} 个结果`, 'info');
+                } catch (e) {
+                    log(`搜索失败: ${e.message}`, 'error');
+                }
+            }
+        };
+
+        // ---------- show (文件信息) ----------
+        commands.show = {
+            description: '显示文件详细信息 (通过 ID)',
+            args: '<fileId>',
+            handler: async (args) => {
+                if (args.length < 1) {
+                    log('用法: show <文件ID>', 'error');
+                    return;
+                }
+                const id = args[0];
+                try {
+                    // 先获取所有文件，再筛选
+                    const files = await apiRequest('/api/files');
+                    const target = files.find(f => f.id === id);
+                    if (!target) {
+                        log(`未找到 ID 为 ${id} 的文件`, 'error');
+                        return;
+                    }
+                    log(`ID: ${target.id}`, 'success');
+                    log(`文件名: ${target.filename}`, 'success');
+                    log(`大小: ${target.size} bytes`, 'success');
+                    log(`路径: ${target.path || '/'}`, 'success');
+                    if (target.chunks) {
+                        log(`切片数: ${target.chunks.length}`, 'success');
+                    }
+                } catch (e) {
+                    log(`错误: ${e.message}`, 'error');
+                }
+            }
+        };
+
+        // ---------- push (上传文件) ----------
+        commands.push = {
+            description: '上传本地文件到云盘 (需提供文件路径)',
+            args: '<localFilePath>',
+            handler: async (args) => {
+                if (args.length < 1) {
+                    log('用法: push <本地文件路径>', 'error');
+                    return;
+                }
+                const filePath = args.join(' ');
+                log(`上传功能需要浏览器支持 File 选择，请点击下方按钮选择文件...`, 'info');
+                // 由于浏览器无法直接读取本地路径，我们使用 input file 选择
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    log(`正在上传 ${file.name} (${file.size} bytes) ...`, 'info');
+                    // 此处应实现切片上传，但为简化，我们直接模拟上传过程（实际需要调用切片API）
+                    // 由于真实上传逻辑复杂，这里展示简化版，仅提示
+                    log(`上传功能暂未完整实现，请使用 WebPan 或 Editor 上传。`, 'error');
+                };
+                input.click();
+            }
+        };
+
+        // ---------- from (下载) ----------
+        commands.from = {
+            description: '从云盘下载文件 (支持路径或ID)',
+            args: '<pathOrId> to <localPath>',
+            handler: async (args) => {
+                if (args.length < 3 || args[1] !== 'to') {
+                    log('用法: from <文件路径或ID> to <本地保存路径>', 'error');
+                    return;
+                }
+                const source = args[0];
+                const dest = args[2];
+                log(`下载功能暂未完整实现 (${source} -> ${dest})`, 'error');
+                // 实际可调用 Download.AutoDownload 类似逻辑，但浏览器下载需通过 Blob URL
+            }
+        };
+
+        // ---------- msg (发送消息) ----------
+        commands.msg = {
+            description: '发送消息给用户',
+            args: '<消息内容> to <用户名>',
+            handler: async (args) => {
+                if (args.length < 3 || args[args.indexOf('to') + 1] === undefined) {
+                    log('用法: msg <消息> to <用户名>', 'error');
+                    return;
+                }
+                const toIndex = args.indexOf('to');
+                const message = args.slice(0, toIndex).join(' ');
+                const username = args.slice(toIndex + 1).join(' ');
+                try {
+                    const result = await apiRequest('https://accounts.nexabox.de/api/messages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ toUser: username, content: message }),
+                    });
+                    log(`消息已发送给 ${username}`, 'success');
+                } catch (e) {
+                    log(`发送失败: ${e.message}`, 'error');
+                }
+            }
+        };
+
+        // ---------- passwd (修改密码) ----------
+        commands.passwd = {
+            description: '修改当前用户密码',
+            args: '',
+            handler: async () => {
+                const newPwd = prompt('请输入新密码:');
+                if (!newPwd) return;
+                const confirmPwd = prompt('请再次输入新密码:');
+                if (newPwd !== confirmPwd) {
+                    log('两次密码不一致', 'error');
+                    return;
+                }
+                try {
+                    await apiRequest('https://accounts.nexabox.de/api/change-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ newPassword: newPwd }),
+                    });
+                    log('密码修改成功！', 'success');
+                } catch (e) {
+                    log(`修改失败: ${e.message}`, 'error');
+                }
+            }
+        };
+
+        // ---------- mkuser (创建用户) ----------
+        commands.mkuser = {
+            description: '创建新用户 (管理员)',
+            args: '<用户名> with <密码>',
+            handler: async (args) => {
+                if (args.length < 3 || args[1] !== 'with') {
+                    log('用法: mkuser <用户名> with <密码>', 'error');
+                    return;
+                }
+                const username = args[0];
+                const password = args.slice(2).join(' ');
+                try {
+                    await apiRequest('https://accounts.nexabox.de/api/users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password }),
+                    });
+                    log(`用户 ${username} 创建成功`, 'success');
+                } catch (e) {
+                    log(`创建失败: ${e.message}`, 'error');
+                }
+            }
+        };
+
+        // ---------- chprmis (修改权限) ----------
+        commands.chprmis = {
+            description: '修改用户权限 (管理员)',
+            args: '<用户名> into <权限列表>',
+            handler: async (args) => {
+                if (args.length < 3 || args[1] !== 'into') {
+                    log('用法: chprmis <用户名> into <权限1,权限2,...>', 'error');
+                    return;
+                }
+                const username = args[0];
+                const perms = args.slice(2).join('').split(',').map(s => s.trim());
+                try {
+                    await apiRequest(`https://accounts.nexabox.de/api/users/${username}/permissions`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ permissions: perms }),
+                    });
+                    log(`用户 ${username} 权限已更新`, 'success');
+                } catch (e) {
+                    log(`更新失败: ${e.message}`, 'error');
+                }
+            }
+        };
+
+        // ---------- rmuser (删除用户) ----------
+        commands.rmuser = {
+            description: '删除用户 (管理员)',
+            args: '<用户名>',
+            handler: async (args) => {
+                if (args.length < 1) {
+                    log('用法: rmuser <用户名>', 'error');
+                    return;
+                }
+                const username = args[0];
+                try {
+                    await apiRequest(`https://accounts.nexabox.de/api/users/${username}`, {
+                        method: 'DELETE',
+                    });
+                    log(`用户 ${username} 已删除`, 'success');
+                } catch (e) {
+                    log(`删除失败: ${e.message}`, 'error');
+                }
+            }
+        };
+
+        // ---------- mkdir (创建文件夹) ----------
+        commands.mkdir = {
+            description: '在云盘创建文件夹',
+            args: '<文件夹名> from <父路径>',
+            handler: async (args) => {
+                if (args.length < 3 || args[1] !== 'from') {
+                    log('用法: mkdir <文件夹名> from <父路径>', 'error');
+                    return;
+                }
+                const name = args[0];
+                const path = args.slice(2).join(' ');
+                try {
+                    await apiRequest('/api/folder', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, path }),
+                    });
+                    log(`文件夹 ${name} 已创建在 ${path}`, 'success');
+                } catch (e) {
+                    log(`创建失败: ${e.message}`, 'error');
+                }
+            }
+        };
+
+        // ---------- pushdir (上传目录) ----------
+        commands.pushdir = {
+            description: '上传整个目录 (需选择文件夹)',
+            args: '<本地目录路径>',
+            handler: async (args) => {
+                log('上传目录功能需要浏览器选择文件夹，暂未实现完整逻辑。', 'error');
+                // 可使用 webkitdirectory 属性实现
+            }
+        };
+
+        // ---------- plks (批量解析分享链接) ----------
+        commands.plks = {
+            description: '批量下载分享链接',
+            args: '<链接1@链接2@...> to <保存路径>',
+            handler: async (args) => {
+                if (args.length < 3 || args[1] !== 'to') {
+                    log('用法: plks <链接1@链接2@...> to <保存路径>', 'error');
+                    return;
+                }
+                const links = args[0].split('@');
+                const dest = args.slice(2).join(' ');
+                log(`批量下载 ${links.length} 个链接到 ${dest}`, 'info');
+                // 实现循环解析下载，但浏览器下载需逐个处理
+                for (const link of links) {
+                    const id = link.split('=').pop();
+                    try {
+                        const info = await apiRequest(`/api/public/share?id=${id}`);
+                        log(`准备下载: ${info.filename} (${info.size} bytes)`, 'info');
+                        // 实际下载需请求 /api/public/share 并携带密码等
+                    } catch (e) {
+                        log(`链接 ${link} 错误: ${e.message}`, 'error');
+                    }
+                }
+            }
+        };
+
+        // ---------- mkls (创建分享链接) ----------
+        commands.mkls = {
+            description: '为文件创建分享链接',
+            args: '<文件ID> with [密码]',
+            handler: async (args) => {
+                if (args.length < 1) {
+                    log('用法: mkls <文件ID> with [密码]', 'error');
+                    return;
+                }
+                const fileId = args[0];
+                let password = null;
+                if (args.length >= 3 && args[1] === 'with') {
+                    password = args.slice(2).join(' ');
+                }
+                try {
+                    const result = await apiRequest('/api/share', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fileId, password }),
+                    });
+                    if (result.success) {
+                        log(`分享链接已创建: https://drive.nexabox.de${result.url}`, 'success');
+                        log(`分享 ID: ${result.shareId}`, 'success');
+                    } else {
+                        log('创建分享链接失败', 'error');
+                    }
+                } catch (e) {
+                    log(`创建失败: ${e.message}`, 'error');
+                }
+            }
+        };
+
+        // ---------- 处理未知命令 ----------
+        function unknownCommand(cmd) {
+            log(`未知命令: ${cmd}。输入 'help' 查看可用命令。`, 'error');
+        }
+
+        // ================================================================
+        //  3. 命令解析器
+        // ================================================================
+        async function parseAndExecute(input) {
+            input = input.trim();
+            if (!input) return;
+
+            // 检查是否以 --help 结尾
+            const helpIndex = input.indexOf('--help');
+            if (helpIndex !== -1) {
+                const cmdName = input.substring(0, helpIndex).trim();
+                if (commands[cmdName]) {
+                    log(`用法: ${cmdName} ${commands[cmdName].args}`, 'info');
+                    log(`说明: ${commands[cmdName].description}`, 'info');
+                    return;
+                }
+            }
+
+            const parts = input.split(/\s+/);
+            const cmd = parts[0];
+            const args = parts.slice(1);
+
+            if (commands[cmd]) {
+                try {
+                    await commands[cmd].handler(args);
+                } catch (e) {
+                    log(`执行命令时出错: ${e.message}`, 'error');
+                }
+            } else {
+                unknownCommand(cmd);
+            }
+        }
+
+        // ================================================================
+        //  4. 输入事件
+        // ================================================================
+        cmdInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const input = cmdInput.value;
+                log(`└──> ${input}`, 'prompt-line');
+                cmdInput.value = '';
+                await parseAndExecute(input);
+                // 自动滚动到底部
+                output.scrollTop = output.scrollHeight;
+            }
+        });
+
+        // 点击终端区域聚焦输入框
+        document.getElementById('terminal').addEventListener('click', () => {
+            cmdInput.focus();
+        });
+
+        // 初始化时聚焦
+        cmdInput.focus();
+
+        // ================================================================
+        //  5. 从 localStorage 读取 token 并显示状态
+        // ================================================================
+        const token = getToken();
+        if (token) {
+            log(`✅ 已加载 Token (${token.substring(0, 8)}...)`, 'success');
+        } else {
+            log('⚠️ 未找到 Token，部分命令可能无法使用。', 'error');
+            log('请在 WebPan 或 Editor 中登录后使用。', 'info');
+        }
+
+        // ================================================================
+        //  6. 暴露 WinBox 引用 (如果需要在命令中关闭窗口)
+        // ================================================================
+        // 为了支持 exit 命令关闭自身，我们在父窗口查找 WinBox 实例
+        if (window.parent && window.parent.windows) {
+            // 将 terminal 窗口引用挂在父窗口的 windows 对象中（需由主菜单在打开时设置）
+            // 但这里我们无法自动关联，可以在主菜单打开时传入，但简单起见，exit 不强制关闭。
+        }
+
+        console.log('✅ Terminal 已加载');
+    </script>
+
+</body>
+</html>
