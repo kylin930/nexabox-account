@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexabox Workstation</title>
-    <!-- WinBox -->
     <script src="https://cdn.jsdelivr.net/npm/winbox@0.2.82/dist/winbox.bundle.min.js"></script>
     <link rel="stylesheet" href="dist/css/themes/modern.min.css">
     <style>
         body {
-            background: #1e1e2f; /* 默认背景 */
+            background: #1e1e2f;
             height: 100vh;
             margin: 0;
             display: flex;
@@ -27,7 +26,6 @@
     </style>
 </head>
 <body>
-    <!-- 登录 iframe -->
     <iframe
         id="loginFrame"
         src="Login.html"
@@ -43,18 +41,27 @@
         "
     ></iframe>
 
-    <!-- 欢迎信息（登录前显示，登录后会被替换） -->
     <div id="info">
         <h1>Nexabox workstation</h1>
         <h3>Welcome back, <span id="usernamePlaceholder">[Todo:用户名]</span></h3>
-        <p style="color: rgba(255,255,255,0.4); font-size: 13px; margin-top: 8px;">Ver:pre-0.2_fix-2</p>
+        <p style="color: rgba(255,255,255,0.4); font-size: 13px; margin-top: 8px;">Ver:pre-0.2</p>
     </div>
 
     <script>
         (function() {
             'use strict';
 
-            // ===== 工具函数 =====
+            // ===== SSO 检测：如果有 app 和 redirect 参数，直接跳转 =====
+            const urlParams = new URLSearchParams(window.location.search);
+            const app = urlParams.get('app');
+            const redirect = urlParams.get('redirect');
+            if (app && redirect) {
+                console.log('[index] 检测到 SSO 参数，跳转到 Login.html');
+                window.location.href = 'Login.html' + window.location.search;
+                return; // 终止后续执行
+            }
+
+            // ===== 原有代码 =====
             function getToken() {
                 return localStorage.getItem('nexabox_token') ||
                        localStorage.getItem('studio_auth_token') ||
@@ -63,27 +70,22 @@
                        '';
             }
 
-            // ===== 安全设置背景 =====
             function safeSetBackground(config) {
                 const body = document.body;
-                // 默认背景颜色
                 const defaultBg = '#1e1e2f';
                 let bgColor = config?.backgroundColor || defaultBg;
                 let bgImage = config?.backgroundImage || null;
 
-                // 如果有背景图片，尝试加载
                 if (bgImage) {
                     const img = new Image();
-                    img.crossOrigin = 'anonymous'; // 如果跨域，可能无法检测加载状态，但可以忽略
+                    img.crossOrigin = 'anonymous';
                     img.onload = function() {
-                        // 图片加载成功：使用图片作为背景
                         body.style.backgroundImage = `url(${bgImage})`;
                         body.style.backgroundSize = 'cover';
                         body.style.backgroundPosition = 'center';
-                        body.style.backgroundColor = 'transparent'; // 让图片完全覆盖
+                        body.style.backgroundColor = 'transparent';
                     };
                     img.onerror = function() {
-                        // 图片加载失败：回退到默认背景
                         console.warn('背景图片加载失败，使用默认背景');
                         body.style.backgroundImage = '';
                         body.style.backgroundColor = defaultBg;
@@ -92,7 +94,6 @@
                     };
                     img.src = bgImage;
                 } else {
-                    // 没有图片，使用颜色（用户配置的颜色或默认）
                     body.style.backgroundImage = '';
                     body.style.backgroundColor = bgColor;
                     body.style.backgroundSize = '';
@@ -100,24 +101,19 @@
                 }
             }
 
-            // ===== 加载用户配置 =====
             async function loadUserConfig() {
                 const token = getToken();
                 if (!token) {
-                    // 未登录，使用默认背景
                     safeSetBackground({ backgroundColor: '#1e1e2f' });
                     return;
                 }
 
                 try {
                     const response = await fetch('/api/user-config', {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
+                        headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if (!response.ok) throw new Error('Failed to load config');
                     const config = await response.json();
-                    // 应用配置
                     safeSetBackground(config);
                 } catch (e) {
                     console.warn('加载用户配置失败，使用默认背景:', e);
@@ -125,7 +121,6 @@
                 }
             }
 
-            // ===== 更新欢迎信息中的用户名 =====
             function updateWelcomeUsername(username) {
                 const placeholder = document.getElementById('usernamePlaceholder');
                 if (placeholder) {
@@ -133,48 +128,39 @@
                 }
             }
 
-            // ===== 监听登录消息 =====
             window.addEventListener('message', function(event) {
                 const data = event.data;
                 if (data && data.type === 'NEXABOX_LOGIN_SUCCESS') {
                     const { token, username, permissions, isInitial } = data.payload;
-
                     console.log('[Nexabox] 登录成功！', username);
 
-                    // 保存 token 和用户名
                     localStorage.setItem('nexabox_token', token);
                     localStorage.setItem('nexabox_username', username);
                     localStorage.setItem('studio_auth_token', token);
                     localStorage.setItem('studio_username', username);
                     localStorage.setItem('studio_perms', JSON.stringify(permissions || []));
 
-                    // 更新欢迎信息
                     updateWelcomeUsername(username);
 
-                    // 隐藏登录 iframe
                     const loginFrame = document.getElementById('loginFrame');
                     if (loginFrame) {
                         loginFrame.style.display = 'none';
                     }
 
-                    // 加载用户配置并应用背景
                     loadUserConfig();
 
-                    // 如果主菜单窗口已存在，刷新它（不传参数）
                     if (typeof Window_MainMenu !== 'undefined' && Window_MainMenu) {
                         Window_MainMenu.setUrl('MainMenu.html');
                     }
                 }
             });
 
-            // ===== 从 URL hash 读取登录信息（兼容） =====
             window.addEventListener('hashchange', function() {
                 const hash = window.location.hash;
                 if (hash.startsWith('#login=')) {
                     try {
                         const json = decodeURIComponent(hash.replace('#login=', ''));
                         const payload = JSON.parse(json);
-                        // 手动触发登录事件
                         window.dispatchEvent(new CustomEvent('message', {
                             detail: { data: { type: 'NEXABOX_LOGIN_SUCCESS', payload } }
                         }));
@@ -182,14 +168,10 @@
                 }
             });
 
-            // ===== 页面加载时初始化 =====
             (function init() {
-                // 检查是否有 token
                 const token = getToken();
                 if (token) {
-                    // 有 token：尝试加载配置（同时也会更新背景）
                     loadUserConfig();
-                    // 也可以尝试获取用户名以更新欢迎信息
                     fetch('/api/me', {
                         headers: { 'Authorization': `Bearer ${token}` }
                     })
@@ -201,14 +183,11 @@
                     })
                     .catch(() => {});
                 } else {
-                    // 无 token：使用默认背景
                     safeSetBackground({ backgroundColor: '#1e1e2f' });
                 }
-
                 console.log('[Nexabox] 已启动，等待登录...');
             })();
 
-            // 创建主菜单 WinBox（全局，以便其他函数访问）
             var Window_MainMenu = new WinBox({
                 title: '工作台主面板',
                 x: "center",
