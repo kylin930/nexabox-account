@@ -321,12 +321,11 @@
             //  4. 登录后跳转处理（统一入口）
             // ============================================================
             function handlePostLogin(token, username, permissions, isInitial) {
-                // 保存 token
+            // 保存 token
                 setToken(token, username, permissions);
 
-                // 判断是否在 iframe 中（工作台模式）
+                // ===== 1. iframe 模式（工作台嵌入） =====
                 if (window.parent !== window) {
-                    // 在 iframe 中，通过 postMessage 通知父页面
                     window.parent.postMessage({
                         type: 'NEXABOX_LOGIN_SUCCESS',
                         payload: { token, username, permissions, isInitial }
@@ -338,9 +337,23 @@
                     return;
                 }
 
-                // ===== OSS 回调模式（独立窗口，带 app 和 redirect） =====
+                // ===== 2. 独立窗口模式 =====
+
+                // 2.1 首次登录 → 强制修改密码（保留 SSO 参数）
+                if (isInitial) {
+                    let target = 'Account.html?change_pwd=1';
+                    // 如果存在SSO 回调参数，一并传递
+                    if (targetApp && redirectUrl) {
+                        target += `&app=${encodeURIComponent(targetApp)}&redirect=${encodeURIComponent(redirectUrl)}`;
+                    }
+                    window.location.href = target;
+                    return;
+                }           
+
+                // 2.2 非首次登录
+
+                // SSO 回调模式（带 app 和 redirect）
                 if (targetApp && redirectUrl) {
-                    // 检查权限
                     const perms = permissions || [];
                     const hasAll = perms.includes('all');
                     if (hasAll || perms.includes(targetApp)) {
@@ -353,20 +366,12 @@
                         loginBtn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right:8px;"></i> 登录';
                         loginBtn.style.borderColor = '#4a8bf5';
                         loginBtn.style.color = '#4a8bf5';
-                        return;
                     }
                     return;
                 }
 
-                // ===== 工作台独立窗口模式 =====
-                // 检查是否是首次登录
-                if (isInitial) {
-                    // 首次登录，跳转到账户中心强制修改密码
-                    let target = 'Account.html?change_pwd=1';
-                    window.location.href = target;
-                } else {
-                    window.location.href = 'MainMenu.html';
-                }
+                // 工作台独立窗口模式（无 SSO 参数）
+                window.location.href = 'MainMenu.html';
             }
 
             // ============================================================
