@@ -171,15 +171,19 @@
                 height: '85%',
                 x: 'center',
                 y: 'center',
-                // 可选：让窗口最大化
-                // max: true,
-                // 添加一个自定义类以调整样式（可选）
-                class: ['no-min', 'no-full'], // 隐藏最小化和全屏按钮，只保留关闭
-                // 窗口背景色
+                class: ['no-min', 'no-full'],
                 background: '#1e6df2',
-                // 可设置最小尺寸
                 minwidth: 400,
                 minheight: 300,
+                // ===== 关键：拦截 iframe 导航 =====
+                onload: function(win) {
+                    const iframe = win.window?.document?.querySelector('iframe');
+                    if (iframe) {
+                        // 给 iframe 添加 sandbox 属性，限制弹出窗口
+                        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+                        // 尝试捕获 iframe 内的点击（但跨域限制，实际无法直接操作 DOM）
+                    }
+                }
             });
         }
 
