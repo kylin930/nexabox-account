@@ -14,7 +14,11 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const path = url.pathname;
   const method = request.method;
-
+  if (path === '/login' && method === 'GET') {
+    const query = url.search;
+    const redirectUrl = `/Login.html${query}`;
+    return Response.redirect(redirectUrl, 302);
+  }
   if (method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
