@@ -128,7 +128,7 @@
                 });
 
                 setToken(token, username, permissions);
-
+                localStorage.setItem('pan_token', token);
                 if (window.parent !== window) {
                     console.log('[Login] 分支: iframe 模式，postMessage 通知父页面');
                     window.parent.postMessage({
