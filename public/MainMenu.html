@@ -469,6 +469,18 @@
                 windows[key].focus();
                 return;
             }
+
+            // 自动限制初始高度不超过视口高度的 85%
+            const maxHeight = window.innerHeight * 0.85;
+            if (config.height !== undefined) {
+                let numHeight = typeof config.height === 'string' ? parseInt(config.height) : config.height;
+                if (!isNaN(numHeight) && numHeight > maxHeight) {
+                    config.height = Math.floor(maxHeight) + 'px';
+                }
+            }
+
+            // 不再设置 maxheight，让用户可自由拖拽放大
+
             const win = new WinBox({
                 x: 'center',
                 y: 'center',
@@ -477,6 +489,7 @@
                 },
                 ...config
             });
+
             windows[key] = win;
         }
 
