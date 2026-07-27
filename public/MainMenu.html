@@ -213,8 +213,8 @@
             }
         }
 
-        .tile-terminal { background: #6C3483; }.tile-account { background: #6C3483; }
-
+        .tile-terminal { background: #6C3483; }.tile-account { background: #6C3483; }.tile-im {background: #00B4D8;  /* 蓝色系，与 IM 主题呼应 */}
+        .tile-agent { background: #4A6A8A; }.tile-pixel { background: #8E44AD; }.tile-preview { background: #2C3E50; }.tile-designer { background: #2C3E50; }  /* 深灰蓝，与工业风格匹配 */
         
     </style>
 </head>
@@ -274,10 +274,125 @@
             <span>账户</span>
             <span class="badge">Profile</span>
         </div>
+        
+        <!-- IM 磁贴 -->
+        <div class="tile tile-im" id="tileIM" role="button" tabindex="0" aria-label="打开即时通讯">
+            <i class="fas fa-comment-dots"></i>
+            <span>IM</span>
+            <span class="badge">即时通讯</span>
+        </div>
 
+        <!-- AI 磁贴 -->
+        <div class="tile tile-agent" id="tileAgent" role="button" tabindex="0" aria-label="打开AI助手">
+            <i class="fas fa-bolt"></i>
+            <span>AI</span>
+            <span class="badge">NexAgent</span>
+        </div>
+
+        <!-- 像素画 -->
+        <div class="tile tile-pixel" id="tilePixel" role="button" tabindex="0">
+            <i class="fas fa-paint-brush"></i>
+            <span>像素画</span>
+            <span class="badge">PixelArt</span>
+        </div>
+
+        <!-- 预览器 -->
+        <div class="tile tile-preview" id="tilePreview" role="button" tabindex="0">
+            <i class="fas fa-eye"></i>
+            <span>预览器</span>
+            <span class="badge">Preview</span>
+        </div>
+
+        <!-- 设计器磁贴 -->
+    <div class="tile tile-designer" id="tileDesigner" role="button" tabindex="0" aria-label="打开UI设计器">
+        <i class="fas fa-pencil-ruler"></i>
+        <span>设计器</span>
+        <span class="badge">Designer</span>
+    </div>
     </main>
-
+    <!-- ===== 右下角 About 按钮 ===== -->
+    <div id="aboutBtn" style="
+        position: fixed;
+        bottom: 12px;
+        right: 16px;
+        width: 16px;
+        height: 16px;
+        font-size: 14px;
+        line-height: 16px;
+        text-align: center;
+        color: rgba(255,255,255,0.25);
+        background: rgba(0,0,0,0.15);
+        border: 1px solid rgba(255,255,255,0.1);
+        cursor: pointer;
+        border-radius: 0;
+        font-family: 'Segoe UI', sans-serif;
+        transition: 0.2s;
+        z-index: 999;
+        user-select: none;
+        " title="关于">
+    ⓘ
+    </div>
     <script>
+        function openDesigner() {
+            openWinBox('designer', {
+                title: '🧩 UI 设计器',
+                url: 'Designer.html',
+                width: '1100px',
+                height: '800px',
+            });
+        }
+        document.getElementById('tileDesigner').addEventListener('click', openDesigner);
+
+        function openPixelArt() {
+            openWinBox('pixel', {
+                title: '🎨 像素画编辑器',
+                url: 'PixelArt.html',
+                width: '900px',
+                height: '750px',
+            });
+        }
+        document.getElementById('tilePixel').addEventListener('click', openPixelArt);
+        function openPreview() {
+            openWinBox('preview', {
+                title: '📄 文档预览器',
+                url: 'Preview.html',
+                width: '900px',
+                height: '700px',
+            });
+        }
+        document.getElementById('tilePreview').addEventListener('click', openPreview);
+        document.getElementById('aboutBtn').addEventListener('click', function() {
+            new WinBox({
+                title: '📄 关于 Nexabox Workstation',
+                url: 'About.html',
+                width: '380px',
+                height: '260px',
+                x: 'center',
+                y: 'center',
+                class: ['no-full', 'no-min'],
+            });
+        });
+        function openAgent() {
+            openWinBox('agent', {
+                title: '⚡ NexAgent',
+                url: 'NexAgent.html',
+                width: '900px',
+                height: '750px',
+            });
+        }
+        document.getElementById('tileAgent').addEventListener('click', openAgent);
+        // 新增 openIM 函数（单例模式，避免重复打开）
+        function openIM() {
+            openWinBox('im', {
+                title: '💬 Nexabox IM',
+                url: 'https://im.huawei.re/',
+                width: '1000px',
+                height: '700px',
+            });
+        }
+
+        // 绑定点击事件
+        document.getElementById('tileIM').addEventListener('click', openIM);
         // 检查登录状态
         function isLoggedIn() {
             return !!localStorage.getItem('nexabox_token');
@@ -340,8 +455,14 @@
             search: null,
             cloud: null,
             terminal: null,
-            account: null
+            account: null,
+            im: null ,
+            agent: null,
+            pixel: null,
+            preview: null,
+            designer: null
         };
+
 
         function openWinBox(key, config) {
             if (windows[key] && !windows[key].isClosed()) {
