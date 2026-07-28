@@ -39,10 +39,45 @@ export async function onRequest(context) {
   }
 }
 
+
+async function handleVerify(request, env) {
+  const { token: tokenToVerify, app } = await request.json();
+  if (!tokenToVerify) {
+    return new Response(JSON.stringify({ error: 'Missing Token' }), { status: 400 });
+  }
+
+  const session = await env.STUDIO_KV.get(`session:${tokenToVerify}`, 'json');
+  if (!session) {
+    return Response.json({ valid: false });
+  }
+
+  const user = await env.STUDIO_KV.get(`user:${session.username}`, 'json');
+  const perms = user ? user.permissions : [];
+  const hasAll = perms.includes('all');
+
+  const responseData = {
+    valid: true,
+    username: session.username,
+    permissions: perms,
+    has_all: hasAll
+  };
+
+  if (app) {
+    responseData.authorized = hasAll || perms.includes(app);
+  }
+
+  return Response.json(responseData);
+}
+
+
+
 async function routeRequest(path, method, request, env) {
   // Public routes
   if (path === '/api/login' && method === 'POST') {
     return handleLogin(request, env);
+  }
+  if (path === '/api/verify' && method === 'POST') {
+    return handleVerify(request, env);
   }
 
   // Auth check for all other routes
@@ -99,7 +134,7 @@ async function routeRequest(path, method, request, env) {
       }
       break;
 
-    case '/api/verify':
+    /* case '/api/verify':
       if (method === 'POST') {
         const { token: tokenToVerify, app } = await request.json();
         if (!tokenToVerify) return new Response('Missing Token', { status: 400 });
@@ -124,7 +159,7 @@ async function routeRequest(path, method, request, env) {
 
         return Response.json(responseData);
       }
-      break;
+      break;*/
     case '/api/user-config':
       if (method === 'GET') {
         const config = await env.STUDIO_KV.get(`user:config:${currentUser}`, 'json') || {};
