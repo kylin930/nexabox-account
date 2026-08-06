@@ -333,6 +333,32 @@
     ⓘ
     </div>
     <script>
+        function getToken() {
+            return localStorage.getItem('nexabox_token') ||
+                   localStorage.getItem('studio_auth_token') ||
+                   sessionStorage.getItem('nexabox_token') ||
+                   sessionStorage.getItem('studio_auth_token') ||
+                   '';
+        }
+        async function loadMainMenuOpacity() {
+            const token = getToken();
+            if (!token) return;
+
+            try {
+                const response = await fetch('/api/user-config', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Failed to load config');
+                const config = await response.json();
+                const opacity = config.mainMenuOpacity !== undefined ? config.mainMenuOpacity : 1.0;
+                // 应用到磁贴容器和顶部栏
+                document.querySelector('.tile-container').style.opacity = opacity;
+                document.querySelector('.topbar').style.opacity = opacity;
+            } catch (e) {
+                console.warn('加载透明度配置失败，使用默认值 1.0', e);
+            }
+        }
+        loadMainMenuOpacity();
         function openDesigner() {
             openWinBox('designer', {
                 title: '🧩 UI 设计器',
