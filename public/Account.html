@@ -347,6 +347,16 @@
                     <input type="text" id="bgImageInput" placeholder="输入图片链接（留空则使用颜色）" />
                     <button class="btn" id="saveBgConfigBtn">保存背景设置</button>
                 </div>
+                <div class="field-group">
+                    <label><i class="fas fa-glass"></i> 主菜单透明度</label>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <input type="range" id="opacitySlider" 
+                               min="0.1" max="1.0" step="0.05" 
+                               value="1.0" 
+                               style="flex:1; accent-color: #4a8bf5;" />
+                        <span id="opacityDisplay" style="min-width:40px; font-family:'Consolas',monospace; color:#8a9bb5;">1.00</span>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="card">
@@ -475,12 +485,30 @@
                     if (data.avatar) {
                         document.getElementById('avatarInput').value = data.avatar;
                     }
+                    loadUserConfigForAccount();
                 } catch (e) {
                     showToast('加载用户信息失败：' + e.message, 'error');
                     // 如果未登录，跳转登录
                     if (e.message.includes('401') || e.message.includes('403')) {
                         window.location.href = 'Login.html?redirect=' + encodeURIComponent(window.location.href);
                     }
+                }
+            }
+            async function loadUserConfigForAccount() {
+                const token = getToken();
+                if (!token) return;
+            try {
+                    const response = await fetch('/api/user-config', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (!response.ok) return;
+                    const config = await response.json();
+                    if (config.mainMenuOpacity !== undefined) {
+                        document.getElementById('opacitySlider').value = config.mainMenuOpacity;
+                        document.getElementById('opacityDisplay').textContent = config.mainMenuOpacity.toFixed(2);
+                    }
+                } catch (e) {
+                    console.warn('加载配置失败', e);
                 }
             }
 
@@ -533,21 +561,29 @@
             document.getElementById('saveBgConfigBtn').addEventListener('click', async () => {
                 const backgroundColor = document.getElementById('bgColorPicker').value;
                 const backgroundImage = document.getElementById('bgImageInput').value.trim();
-                const config = { backgroundColor, backgroundImage };
+                const opacity = parseFloat(document.getElementById('opacitySlider').value);
+                const config = { 
+                    backgroundColor, 
+                    backgroundImage,
+                    mainMenuOpacity: opacity
+                };
                 try {
                     const res = await apiRequest('/user-config', {
                         method: 'POST',
                         body: JSON.stringify(config)
-                   });
-                   if (res.success) {
-                       showToast('背景设置已保存', 'success');
-                        // 可以立即预览（但Account.html本身背景可能不同，可以重新加载页面）
+                    });
+                    if (res.success) {
+                        showToast('配置已保存', 'success');
+                        // 立即预览（需要通知主菜单刷新）
                     } else {
                         showToast('保存失败', 'error');
                     }
                 } catch (e) {
                     showToast('保存失败：' + e.message, 'error');
                 }
+            });
+            document.getElementById('opacitySlider').addEventListener('input', function() {
+                document.getElementById('opacityDisplay').textContent = this.value;
             });
             //5.1.1 重制
             document.getElementById('resetConfigBtn').addEventListener('click', async () => {

@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexabox 工作台</title>
+    <!-- Font Awesome 6 (免费) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* ===== 全局重置 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+            background: #0c0c0c;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            touch-action: manipulation;
+        }
+
+        /* ===== 顶部状态栏 ===== */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px 8px;
+            background: #0c0c0c;
+            font-size: 14px;
+            font-weight: 300;
+            color: #b0b0b0;
+            border-bottom: 1px solid #1a1a1a;
+        }
+        .status-bar .brand {
+            font-weight: 600;
+            color: #fff;
+            font-size: 16px;
+        }
+        .status-bar .time {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ===== 用户信息 ===== */
+        .user-info {
+            padding: 8px 16px 12px;
+            background: #0c0c0c;
+            border-bottom: 1px solid #1a1a1a;
+            font-size: 14px;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .user-info .name {
+            color: #fff;
+            font-weight: 500;
+        }
+        .user-info .edit-btn {
+            background: transparent;
+            border: 1px solid #444;
+            color: #aaa;
+            padding: 4px 12px;
+            font-size: 12px;
+            border-radius: 0;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .user-info .edit-btn.active {
+            border-color: #0078D7;
+            color: #0078D7;
+        }
+
+        /* ===== 磁贴网格 ===== */
+        .tile-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            padding: 12px;
+            flex: 1;
+            align-content: start;
+        }
+
+        /* ===== 通用磁贴样式 ===== */
+        .tile {
+            aspect-ratio: 1 / 1;
+            background: #1a1a1a;
+            border: none;
+            border-radius: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding: 12px 14px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+            position: relative;
+            overflow: hidden;
+            text-align: left;
+            line-height: 1.3;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none;
+        }
+        .tile:active {
+            opacity: 0.7;
+            transform: scale(0.96);
+        }
+        .tile .icon {
+            font-size: 28px;
+            margin-bottom: 4px;
+            color: #fff; /* 纯白 */
+            opacity: 0.9;
+            width: 100%;
+        }
+        .tile .label {
+            font-size: 15px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            color: #fff;
+        }
+        .tile .badge {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            font-size: 10px;
+            opacity: 0.5;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #fff;
+        }
+
+        /* ===== 双倍宽磁贴 ===== */
+        .tile-wide {
+            grid-column: span 2;
+        }
+
+        /* ===== 颜色主题（纯色） ===== */
+        .tile-blue { background: #0078D7; }
+        .tile-green { background: #00B050; }
+        .tile-purple { background: #8E44AD; }
+        .tile-orange { background: #FF8C00; }
+        .tile-dark-purple { background: #6C3483; }
+        .tile-cyan { background: #00B4D8; }
+        .tile-gray-blue { background: #4A6A8A; }
+        .tile-dark-gray { background: #2C3E50; }
+        .tile-red { background: #D13438; }
+        .tile-teal { background: #008080; }
+
+        /* ===== 编辑模式下的拖拽把手 ===== */
+        .tile .drag-handle {
+            display: none;
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            font-size: 16px;
+            color: rgba(255,255,255,0.5);
+            cursor: grab;
+            padding: 4px;
+        }
+        .edit-mode .tile .drag-handle {
+            display: block;
+        }
+        .edit-mode .tile {
+            cursor: grab;
+        }
+        .edit-mode .tile:active {
+            opacity: 1;
+            transform: none;
+        }
+        .tile.dragging {
+            opacity: 0.3;
+            transform: scale(0.95);
+        }
+        .tile.drag-over {
+            border: 2px dashed rgba(255,255,255,0.3);
+        }
+
+        /* ===== 底部导航 ===== */
+        .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0 16px;
+            background: #0c0c0c;
+            border-top: 1px solid #1a1a1a;
+            font-size: 12px;
+            color: #666;
+        }
+        .bottom-nav .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .bottom-nav .nav-item.active {
+            color: #0078D7;
+        }
+        .bottom-nav .nav-item .nav-icon {
+            font-size: 20px;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 360px) {
+            .tile-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 5px;
+                padding: 8px;
+            }
+            .tile-wide {
+                grid-column: span 2;
+            }
+            .tile .icon { font-size: 22px; }
+            .tile .label { font-size: 13px; }
+        }
+
+        @media (min-width: 600px) {
+            .tile-grid {
+                grid-template-columns: repeat(6, 1fr);
+                gap: 8px;
+                padding: 16px;
+                max-width: 720px;
+                margin: 0 auto;
+            }
+            .tile-wide {
+                grid-column: span 2;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== 状态栏 ===== -->
+    <div class="status-bar">
+        <span class="brand">Nexabox</span>
+        <span class="time" id="clockDisplay">--:--</span>
+    </div>
+
+    <!-- ===== 用户信息 + 编辑按钮 ===== -->
+    <div class="user-info">
+        <span>👤 <span class="name" id="usernameDisplay">用户</span></span>
+        <button class="edit-btn" id="editBtn">✎ 排序</button>
+    </div>
+
+    <!-- ===== 磁贴网格 ===== -->
+    <div class="tile-grid" id="tileGrid">
+        <!-- 磁贴数据将用 JS 生成，以便排序 -->
+        <!-- 此处留空，由 JS 动态渲染 -->
+    </div>
+
+    <!-- ===== 底部导航 ===== -->
+    <div class="bottom-nav">
+        <div class="nav-item active">
+            <span class="nav-icon">🏠</span>
+            <span>主页</span>
+        </div>
+        <div class="nav-item">
+            <span class="nav-icon">⚙️</span>
+            <span>设置</span>
+        </div>
+        <div class="nav-item">
+            <span class="nav-icon">📌</span>
+            <span>关于</span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ================================================================
+            //  1. 磁贴数据定义
+            // ================================================================
+            const TILES_DATA = [
+                { id: 'translator', icon: 'fa-globe', label: '翻译', badge: 'Bing', color: 'tile-blue', wide: false, target: 'https://cn.bing.com/translator/' },
+                { id: 'search', icon: 'fa-search', label: '搜索', badge: 'Local', color: 'tile-green', wide: false, target: 'Search.html?mobile=1' },
+                { id: 'editor', icon: 'fa-edit', label: '编辑器', badge: 'Editor', color: 'tile-purple', wide: false, target: 'Editor.html?mobile=1' },
+                { id: 'cloud', icon: 'fa-cloud', label: '云盘', badge: 'Nexabox', color: 'tile-orange', wide: true, target: 'WebPan.html?mobile=1' },
+                { id: 'terminal', icon: 'fa-terminal', label: '终端', badge: 'CLI', color: 'tile-dark-purple', wide: false, target: 'Terminal.html?mobile=1' },
+                { id: 'im', icon: 'fa-comment-dots', label: 'IM', badge: 'Chat', color: 'tile-cyan', wide: false, target: 'https://im.huawei.re/' },
+                { id: 'ai', icon: 'fa-bolt', label: 'AI', badge: 'NexAgent', color: 'tile-gray-blue', wide: false, target: 'NexAgent.html?mobile=1' },
+                { id: 'pixel', icon: 'fa-paint-brush', label: '像素画', badge: 'Pixel', color: 'tile-dark-gray', wide: false, target: 'PixelArt.html?mobile=1' },
+                { id: 'preview', icon: 'fa-eye', label: '预览器', badge: 'Preview', color: 'tile-red', wide: false, target: 'Preview.html?mobile=1' },
+                { id: 'designer', icon: 'fa-pencil-ruler', label: '设计器', badge: 'Designer', color: 'tile-teal', wide: false, target: 'Designer.html?mobile=1' },
+                { id: 'account', icon: 'fa-user-circle', label: '账户', badge: 'Profile', color: 'tile-purple', wide: false, target: 'Account.html?mobile=1' }
+            ];
+
+            // ================================================================
+            //  2. 状态管理
+            // ================================================================
+            const STORAGE_KEY = 'mobile_tile_order';
+            let tiles = [];
+            let editMode = false;
+            let dragData = null; // { tile, index, startX, startY, offsetX, offsetY }
+
+            const grid = document.getElementById('tileGrid');
+            const editBtn = document.getElementById('editBtn');
+
+            // ================================================================
+            //  3. 加载/保存顺序
+            // ================================================================
+            function loadTileOrder() {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    try {
+                        const order = JSON.parse(stored);
+                        // 只保留存在于 TILES_DATA 中的 id
+                        const validIds = TILES_DATA.map(t => t.id);
+                        const filtered = order.filter(id => validIds.includes(id));
+                        // 补齐缺失的
+                        const allIds = TILES_DATA.map(t => t.id);
+                        const missing = allIds.filter(id => !filtered.includes(id));
+                        const finalOrder = [...filtered, ...missing];
+                        return finalOrder;
+                    } catch (e) {
+                        return TILES_DATA.map(t => t.id);
+                    }
+                }
+                return TILES_DATA.map(t => t.id);
+            }
+
+            function saveTileOrder(order) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+            }
+
+            // ================================================================
+            //  4. 渲染磁贴
+            // ================================================================
+            function renderTiles(order) {
+                grid.innerHTML = '';
+                const dataMap = {};
+                TILES_DATA.forEach(t => dataMap[t.id] = t);
+                order.forEach(id => {
+                    const tile = dataMap[id];
+                    if (!tile) return;
+                    const div = document.createElement('div');
+                    div.className = `tile ${tile.color}`;
+                    if (tile.wide) div.classList.add('tile-wide');
+                    div.dataset.id = tile.id;
+                    div.dataset.target = tile.target;
+
+                    // 拖拽把手（纯白图标）
+                    const handle = document.createElement('span');
+                    handle.className = 'drag-handle';
+                    handle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
+                    div.appendChild(handle);
+
+                    // 图标（纯白）
+                    const iconSpan = document.createElement('span');
+                    iconSpan.className = 'icon';
+                    iconSpan.innerHTML = `<i class="fas ${tile.icon}"></i>`;
+                    div.appendChild(iconSpan);
+
+                    // 标签
+                    const labelSpan = document.createElement('span');
+                    labelSpan.className = 'label';
+                    labelSpan.textContent = tile.label;
+                    div.appendChild(labelSpan);
+
+                    // 徽标
+                    const badgeSpan = document.createElement('span');
+                    badgeSpan.className = 'badge';
+                    badgeSpan.textContent = tile.badge;
+                    div.appendChild(badgeSpan);
+
+                    // 点击事件（非编辑模式下跳转）
+                    div.addEventListener('click', function(e) {
+                        if (editMode) return;
+                        const target = this.dataset.target;
+                        if (target) {
+                            if (target.startsWith('http://') || target.startsWith('https://')) {
+                                window.location.href = target;
+                            } else {
+                                window.location.href = target;
+                            }
+                        }
+                    });
+
+                    grid.appendChild(div);
+                });
+            }
+
+            // ================================================================
+            //  5. 更新磁贴顺序（通过拖拽）
+            // ================================================================
+            function reorderTiles(fromIndex, toIndex) {
+                if (fromIndex === toIndex) return;
+                const order = loadTileOrder();
+                const [removed] = order.splice(fromIndex, 1);
+                order.splice(toIndex, 0, removed);
+                saveTileOrder(order);
+                renderTiles(order);
+                // 退出编辑模式（自动）
+                if (editMode) toggleEditMode();
+            }
+
+            // ================================================================
+            //  6. 编辑模式切换
+            // ================================================================
+            function toggleEditMode() {
+                editMode = !editMode;
+                document.body.classList.toggle('edit-mode', editMode);
+                editBtn.textContent = editMode ? '✓ 完成' : '✎ 排序';
+                editBtn.classList.toggle('active', editMode);
+                if (!editMode) {
+                    // 清除拖拽状态
+                    document.querySelectorAll('.tile').forEach(el => {
+                        el.classList.remove('dragging', 'drag-over');
+                    });
+                }
+            }
+
+            editBtn.addEventListener('click', toggleEditMode);
+
+            // ================================================================
+            //  7. 拖拽实现（支持鼠标和触摸）
+            // ================================================================
+            function initDrag(e) {
+                if (!editMode) return;
+                const tile = e.target.closest('.tile');
+                if (!tile) return;
+                // 允许点击把手或磁贴本身
+                const isHandle = e.target.closest('.drag-handle');
+                if (!isHandle && !tile) return;
+
+                const rect = tile.getBoundingClientRect();
+                const touch = e.touches ? e.touches[0] : e;
+                const offsetX = touch.clientX - rect.left;
+                const offsetY = touch.clientY - rect.top;
+
+                dragData = {
+                    tile: tile,
+                    index: Array.from(grid.children).indexOf(tile),
+                    startX: touch.clientX,
+                    startY: touch.clientY,
+                    offsetX: offsetX,
+                    offsetY: offsetY
+                };
+
+                tile.classList.add('dragging');
+                // 防止文本选择
+                document.body.style.userSelect = 'none';
+
+                if (e.type === 'mousedown') {
+                    document.addEventListener('mousemove', onDragMove);
+                    document.addEventListener('mouseup', onDragEnd);
+                } else if (e.type === 'touchstart') {
+                    document.addEventListener('touchmove', onDragMove, { passive: false });
+                    document.addEventListener('touchend', onDragEnd);
+                }
+                e.preventDefault();
+            }
+
+            function onDragMove(e) {
+                if (!dragData) return;
+                const touch = e.touches ? e.touches[0] : e;
+                const deltaX = touch.clientX - dragData.startX;
+                const deltaY = touch.clientY - dragData.startY;
+
+                // 移动磁贴（视觉反馈）
+                const tile = dragData.tile;
+                tile.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                tile.style.zIndex = '1000';
+
+                // 检测悬停的目标位置
+                const children = Array.from(grid.children);
+                let targetIndex = -1;
+                const centerX = touch.clientX;
+                const centerY = touch.clientY;
+
+                for (let i = 0; i < children.length; i++) {
+                    const child = children[i];
+                    if (child === tile) continue;
+                    const rect = child.getBoundingClientRect();
+                    if (centerX >= rect.left && centerX <= rect.right &&
+                        centerY >= rect.top && centerY <= rect.bottom) {
+                        targetIndex = i;
+                        break;
+                    }
+                }
+
+                // 清除所有高亮
+                children.forEach(c => c.classList.remove('drag-over'));
+                if (targetIndex !== -1) {
+                    children[targetIndex].classList.add('drag-over');
+                    dragData.targetIndex = targetIndex;
+                } else {
+                    dragData.targetIndex = -1;
+                }
+
+                if (e.type === 'touchmove') e.preventDefault();
+            }
+
+            function onDragEnd(e) {
+                if (!dragData) return;
+                // 清除样式
+                const tile = dragData.tile;
+                tile.style.transform = '';
+                tile.style.zIndex = '';
+                tile.classList.remove('dragging');
+                document.querySelectorAll('.tile').forEach(c => c.classList.remove('drag-over'));
+                document.body.style.userSelect = '';
+
+                if (dragData.targetIndex !== -1 && dragData.targetIndex !== dragData.index) {
+                    reorderTiles(dragData.index, dragData.targetIndex);
+                } else {
+                    // 没有变化，仅刷新
+                    const order = loadTileOrder();
+                    renderTiles(order);
+                }
+
+                dragData = null;
+                document.removeEventListener('mousemove', onDragMove);
+                document.removeEventListener('mouseup', onDragEnd);
+                document.removeEventListener('touchmove', onDragMove);
+                document.removeEventListener('touchend', onDragEnd);
+            }
+
+            // 事件绑定
+            grid.addEventListener('mousedown', initDrag);
+            grid.addEventListener('touchstart', initDrag, { passive: true });
+
+            // 防止在编辑模式下点击磁贴触发跳转
+            grid.addEventListener('click', function(e) {
+                if (editMode) e.stopPropagation();
+            });
+
+            // ================================================================
+            //  8. 实时时钟
+            // ================================================================
+            const clockEl = document.getElementById('clockDisplay');
+            function updateClock() {
+                const now = new Date();
+                const pad = n => String(n).padStart(2, '0');
+                clockEl.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            }
+            updateClock();
+            setInterval(updateClock, 10000);
+
+            // ================================================================
+            //  9. 用户名显示
+            // ================================================================
+            const usernameEl = document.getElementById('usernameDisplay');
+            const storedUser = localStorage.getItem('nexabox_username') ||
+                               localStorage.getItem('studio_username') ||
+                               '用户';
+            usernameEl.textContent = storedUser;
+
+            // ================================================================
+            //  10. 初始化
+            // ================================================================
+            const order = loadTileOrder();
+            renderTiles(order);
+
+            console.log('✅ MobileMainMenu 已加载 (WP10 风格，纯白图标，支持拖拽排序)');
+        })();
+    </script>
+</body>
+</html>
